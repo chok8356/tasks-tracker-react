@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { useNavigate } from 'react-router'
 
-import { isAuthenticated, login } from '../router/auth'
+import { isAuthenticated, login } from '@/router/auth'
 
 export default function LoginPage() {
   const navigate = useNavigate()

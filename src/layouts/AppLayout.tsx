@@ -1,6 +1,6 @@
 import { Link, Outlet } from 'react-router'
 
-import { logout } from '../router/auth'
+import { logout } from '@/router/auth'
 
 export default function AppLayout() {
   return (
