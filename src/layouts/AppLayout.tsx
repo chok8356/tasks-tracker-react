@@ -1,8 +1,10 @@
 import { Link, Outlet } from 'react-router'
 
-import { logout } from '@/router/auth'
+import { useAuth } from '@/use/useAuth'
 
 export default function AppLayout() {
+  const { logout } = useAuth()
+
   return (
     <div style={{ display: 'flex', height: '100vh' }}>
       <nav

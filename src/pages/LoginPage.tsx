@@ -1,13 +1,14 @@
 import { useEffect } from 'react'
 import { useNavigate } from 'react-router'
 
-import { isAuthenticated, login } from '@/router/auth'
+import { useAuth } from '@/use/useAuth'
 
 export default function LoginPage() {
   const navigate = useNavigate()
+  const { isAuthenticated, login } = useAuth()
 
   useEffect(() => {
-    if (isAuthenticated()) {
+    if (isAuthenticated) {
       navigate('/dashboard', { replace: true })
     }
   })
