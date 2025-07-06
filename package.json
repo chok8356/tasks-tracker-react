@@ -24,6 +24,7 @@
     "eslint-plugin-prettier": "^5.5.1",
     "globals": "^16.3.0",
     "prettier": "^3.6.2",
+    "react-router": "^7.6.3",
     "typescript": "~5.8.3",
     "vite": "^7.0.2"
   },
