@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { useNavigate } from 'react-router'
 
-import { useAuth } from '@/use/useAuth'
+import { useAuth } from '@/use/use-auth'
 
 export const LoginPage = () => {
   const navigate = useNavigate()

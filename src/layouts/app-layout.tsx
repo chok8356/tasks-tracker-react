@@ -1,7 +1,7 @@
 import { Outlet, useNavigate } from 'react-router'
 
-import { Menu } from '@/layouts/components/Menu.tsx'
-import { useAuth } from '@/use/useAuth'
+import { Menu } from '@/layouts/components/menu'
+import { useAuth } from '@/use/use-auth'
 
 export const AppLayout = () => {
   const { logout } = useAuth()

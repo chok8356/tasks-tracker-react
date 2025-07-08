@@ -1,6 +1,6 @@
 import { Navigate, Outlet } from 'react-router'
 
-import { useAuth } from '@/use/useAuth'
+import { useAuth } from '@/use/use-auth'
 
 export const ProtectedRoute = () => {
   const { isAuthenticated } = useAuth()
