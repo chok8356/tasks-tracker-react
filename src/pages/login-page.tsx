@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { useNavigate } from 'react-router'
 
+import { LoginForm } from '@/components/login-form.tsx'
 import { useAuth } from '@/use/use-auth'
 
 export const LoginPage = () => {
@@ -19,13 +20,10 @@ export const LoginPage = () => {
   }
 
   return (
-    <div style={{ margin: 'auto', maxWidth: 300, padding: '2rem' }}>
-      <h2>Login</h2>
-      <button
-        type="button"
-        onClick={handleLogin}>
-        Войти
-      </button>
+    <div className="d-grid min-h-screen w-screen content-center p-12">
+      <LoginForm
+        onLogin={handleLogin}
+        className="m-auto w-sm"></LoginForm>
     </div>
   )
 }

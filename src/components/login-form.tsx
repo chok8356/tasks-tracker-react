@@ -12,8 +12,11 @@ import { cn } from '@/lib/utils'
 
 export function LoginForm({
   className,
+  onLogin,
   ...props
-}: React.ComponentProps<'div'>) {
+}: React.ComponentProps<'div'> & {
+  onLogin: () => void
+}) {
   return (
     <div
       className={cn('flex flex-col gap-6', className)}
@@ -54,6 +57,7 @@ export function LoginForm({
               </div>
               <div className="flex flex-col gap-3">
                 <Button
+                  onClick={onLogin}
                   type="submit"
                   className="w-full">
                   Login
