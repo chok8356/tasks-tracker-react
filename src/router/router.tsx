@@ -1,10 +1,10 @@
 import { createBrowserRouter, Navigate } from 'react-router'
 
-import AppLayout from '@/layouts/AppLayout'
-import DashboardPage from '@/pages/App/DashboardPage'
-import LoginPage from '@/pages/LoginPage'
+import { AppLayout } from '@/layouts/AppLayout'
+import { DashboardPage } from '@/pages/App/DashboardPage'
+import { LoginPage } from '@/pages/LoginPage'
 
-import ProtectedRoute from './ProtectedRoute'
+import { ProtectedRoute } from './ProtectedRoute'
 
 export const router = createBrowserRouter([
   {
@@ -21,7 +21,7 @@ export const router = createBrowserRouter([
                 to="/dashboard"
                 replace
               />
-            ), // Редирект с / на /dashboard
+            ),
             path: '/',
           },
           {

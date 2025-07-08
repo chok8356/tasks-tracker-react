@@ -5,7 +5,7 @@ export default antfu(
   {
     jsonc: true,
     react: true,
-    stylistic: true,
+    stylistic: false,
     typescript: true,
   },
   gitignore(),
@@ -16,7 +16,6 @@ export default antfu(
       'perfectionist/sort-imports': ['error', { type: 'alphabetical' }],
       'perfectionist/sort-interfaces': ['error', { type: 'alphabetical' }],
       'perfectionist/sort-objects': ['error', { type: 'alphabetical' }],
-      'style/quote-props': ['error', 'as-needed'],
       'ts/consistent-type-definitions': ['error', 'type'],
     },
   },

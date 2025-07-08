@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router'
 
 import { useAuth } from '@/use/useAuth'
 
-export default function LoginPage() {
+export const LoginPage = () => {
   const navigate = useNavigate()
   const { isAuthenticated, login } = useAuth()
 

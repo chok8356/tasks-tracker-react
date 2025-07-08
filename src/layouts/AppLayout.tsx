@@ -1,34 +1,32 @@
-import { Link, Outlet } from 'react-router'
+import { Outlet, useNavigate } from 'react-router'
 
+import { Menu } from '@/layouts/components/Menu.tsx'
 import { useAuth } from '@/use/useAuth'
 
-export default function AppLayout() {
+export const AppLayout = () => {
   const { logout } = useAuth()
+  const navigate = useNavigate()
 
   return (
-    <div style={{ display: 'flex', height: '100vh' }}>
-      <nav
-        style={{
-          borderRight: '1px solid gray',
-          padding: '1rem',
-          width: '200px',
-        }}>
-        <ul>
+    <div className="flex h-screen w-screen">
+      <div className="bg-base-200 grid h-full grid-rows-[1fr_auto] p-2">
+        <Menu></Menu>
+
+        <ul className="menu">
           <li>
-            <Link to="/dashboard">Dashboard</Link>
-          </li>
-          <li>
-            <button
-              type="button"
+            <span
               onClick={() => {
                 logout()
-                window.location.href = '/login'
-              }}>
+                navigate('/login')
+              }}
+              className="tooltip tooltip-right"
+              data-tip="Logout">
               Logout
-            </button>
+            </span>
           </li>
         </ul>
-      </nav>
+      </div>
+
       <main style={{ flex: 1, padding: '1rem' }}>
         <Outlet />
       </main>
