@@ -3,6 +3,7 @@
 import type { LucideIcon } from 'lucide-react'
 
 import { ChevronRight } from 'lucide-react'
+import { Link, useLocation } from 'react-router'
 
 import {
   Collapsible,
@@ -34,6 +35,8 @@ export function NavMain({
     }[]
   }[]
 }) {
+  const location = useLocation()
+
   return (
     <SidebarGroup>
       <SidebarGroupLabel>Platform</SidebarGroupLabel>
@@ -46,10 +49,17 @@ export function NavMain({
             className="group/collapsible">
             <SidebarMenuItem>
               <CollapsibleTrigger asChild>
-                <SidebarMenuButton tooltip={item.title}>
-                  {item.icon && <item.icon />}
-                  <span>{item.title}</span>
-                  <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                <SidebarMenuButton
+                  isActive={location.pathname === item.url}
+                  asChild
+                  tooltip={item.title}>
+                  <Link to={item.url}>
+                    {item.icon && <item.icon />}
+                    <span>{item.title}</span>
+                    {item?.items?.length && (
+                      <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                    )}
+                  </Link>
                 </SidebarMenuButton>
               </CollapsibleTrigger>
               <CollapsibleContent>

@@ -1,7 +1,7 @@
 import { createBrowserRouter, Navigate } from 'react-router'
 
 import { AppLayout } from '@/layouts/app-layout'
-import { DashboardPage } from '@/pages/app/dashboard-page'
+import { BoardPage } from '@/pages/app/board-page.tsx'
 import { LoginPage } from '@/pages/login-page'
 
 import { ProtectedRoute } from './protected-route'
@@ -18,21 +18,21 @@ export const router = createBrowserRouter([
           {
             element: (
               <Navigate
-                to="/dashboard"
+                to="/board"
                 replace
               />
             ),
-            path: '/',
+            index: true,
           },
           {
-            element: <DashboardPage />,
-            path: 'dashboard',
+            element: <BoardPage />,
+            path: 'board',
           },
         ],
         element: <AppLayout />,
-        path: '/',
       },
     ],
-    element: <ProtectedRoute />, // Защищённый участок маршрутов
+    element: <ProtectedRoute />,
+    path: '/',
   },
 ])

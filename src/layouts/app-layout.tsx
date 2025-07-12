@@ -1,3 +1,5 @@
+import { Outlet, useLocation } from 'react-router'
+
 import { AppSidebar } from '@/components/app-sidebar'
 import {
   Breadcrumb,
@@ -15,6 +17,13 @@ import {
 } from '@/components/ui/sidebar'
 
 export const AppLayout = () => {
+  const location = useLocation()
+  const pathnames = location.pathname.split('/').filter(Boolean)
+
+  const titleMap: Record<string, string> = {
+    board: 'Board',
+  }
+
   return (
     <SidebarProvider>
       <AppSidebar />
@@ -28,26 +37,33 @@ export const AppLayout = () => {
             />
             <Breadcrumb>
               <BreadcrumbList>
-                <BreadcrumbItem className="hidden md:block">
-                  <BreadcrumbLink href="#">
-                    Building Your Application
-                  </BreadcrumbLink>
-                </BreadcrumbItem>
-                <BreadcrumbSeparator className="hidden md:block" />
-                <BreadcrumbItem>
-                  <BreadcrumbPage>Data Fetching</BreadcrumbPage>
-                </BreadcrumbItem>
+                {pathnames.map((segment, index) => {
+                  const href = `/${pathnames.slice(0, index + 1).join('/')}`
+                  const isLast = index === pathnames.length - 1
+
+                  return (
+                    <BreadcrumbItem key={href}>
+                      {isLast ? (
+                        <BreadcrumbPage>
+                          {titleMap[segment] || decodeURIComponent(segment)}
+                        </BreadcrumbPage>
+                      ) : (
+                        <>
+                          <BreadcrumbLink href={href}>
+                            {titleMap[segment] || decodeURIComponent(segment)}
+                          </BreadcrumbLink>
+                          <BreadcrumbSeparator />
+                        </>
+                      )}
+                    </BreadcrumbItem>
+                  )
+                })}
               </BreadcrumbList>
             </Breadcrumb>
           </div>
         </header>
         <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-          <div className="grid auto-rows-min gap-4 md:grid-cols-3">
-            <div className="bg-muted/50 aspect-video rounded-xl" />
-            <div className="bg-muted/50 aspect-video rounded-xl" />
-            <div className="bg-muted/50 aspect-video rounded-xl" />
-          </div>
-          <div className="bg-muted/50 min-h-[100vh] flex-1 rounded-xl md:min-h-min" />
+          <Outlet />
         </div>
       </SidebarInset>
     </SidebarProvider>

@@ -10,13 +10,13 @@ export const LoginPage = () => {
 
   useEffect(() => {
     if (isAuthenticated) {
-      navigate('/dashboard', { replace: true })
+      navigate('/', { replace: true })
     }
   })
 
   function handleLogin() {
     login('fake-token')
-    navigate('/dashboard', { replace: true })
+    navigate('/', { replace: true })
   }
 
   return (
