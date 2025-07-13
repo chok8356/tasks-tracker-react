@@ -1,6 +1,6 @@
 import { UserIcon } from 'lucide-react'
 
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar.tsx'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 
 const data = [
   {
@@ -56,43 +56,55 @@ const data = [
 
 export const Board = () => {
   return (
-    <div className="grid h-full grid-cols-3 gap-2">
+    <div
+      className="grid h-full gap-2"
+      style={{ gridTemplateColumns: `repeat(${data.length}, minmax(0, 1fr))` }}>
+      {/* Колонки */}
       {data.map((column) => (
         <div
           key={column.id}
-          className="rounded-sm bg-gray-100 p-2">
-          <div className="mb-2 flex items-center justify-between p-2">
-            <span className="font-medium">{column.title}</span>
-            <span className="rounded-sm bg-gray-200/75 px-1.5 text-sm font-medium">
+          className="border-border flex flex-col gap-2 rounded-2xl border bg-gray-50 p-2">
+          {/* Заголовок колонки */}
+          <div className="flex items-center justify-between p-2">
+            <span className="text-foreground text-md font-semibold">
+              {column.title}
+            </span>
+            <span className="bg-muted text-mutedForeground rounded-lg px-2 py-0.5 text-sm font-medium">
               {column.count}
             </span>
           </div>
 
-          {column.cards.map((card) => (
-            <a
-              key={card.id}
-              href="#"
-              className="mb-2 grid gap-2 rounded-sm bg-white p-2 text-sm shadow-xs hover:bg-gray-200">
-              <span>{card.title}</span>
-              <div className="flex items-center justify-between gap-2">
-                <span className="bg-muted rounded-xs px-1 text-xs">
-                  {card.ticketId}
-                </span>
-                <span className="bg-muted ml-auto rounded-xs px-1 text-xs">
-                  {card.rating}
-                </span>
-                <Avatar className="h-6 w-6 rounded-lg">
-                  <AvatarImage />
-                  <AvatarFallback className="rounded-lg">
-                    <UserIcon
-                      className="text-gray-400"
-                      size="16"
-                    />
-                  </AvatarFallback>
-                </Avatar>
-              </div>
-            </a>
-          ))}
+          {/* Карточки */}
+          <div className="flex flex-col gap-2">
+            {column.cards.map((card) => (
+              <a
+                key={card.id}
+                href="#"
+                className="border-border hover:bg-muted rounded-xl border bg-white p-3 shadow-xs transition-colors">
+                <div className="text-foreground text-sm">{card.title}</div>
+
+                <div className="text-mutedForeground mt-2 flex items-center justify-between gap-2 text-xs">
+                  <span className="bg-muted rounded-md px-2 py-0.5">
+                    {card.ticketId}
+                  </span>
+
+                  <span className="bg-muted ml-auto rounded-md px-2 py-0.5">
+                    {card.rating}
+                  </span>
+
+                  <Avatar className="h-6 w-6 rounded-md">
+                    <AvatarImage />
+                    <AvatarFallback className="rounded-md">
+                      <UserIcon
+                        size={16}
+                        className="text-gray-400"
+                      />
+                    </AvatarFallback>
+                  </Avatar>
+                </div>
+              </a>
+            ))}
+          </div>
         </div>
       ))}
     </div>
