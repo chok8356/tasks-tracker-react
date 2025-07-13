@@ -16,6 +16,7 @@ export default antfu(
       'perfectionist/sort-imports': ['error', { type: 'alphabetical' }],
       'perfectionist/sort-interfaces': ['error', { type: 'alphabetical' }],
       'perfectionist/sort-objects': ['error', { type: 'alphabetical' }],
+      'react-hooks-extra/no-direct-set-state-in-use-effect': 'off',
       'react-refresh/only-export-components': 'off',
       'react/no-context-provider': 'off',
       'ts/consistent-type-definitions': ['error', 'type'],
