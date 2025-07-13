@@ -8,12 +8,14 @@ const data = [
       {
         assignee: 'user1',
         id: '1',
+        rating: 8,
         ticketId: 'UX-908',
         title: 'Поиск - Личный Кабинет - Дешборды - Техдолг',
       },
       {
         assignee: 'user2',
         id: '2',
+        rating: 5,
         ticketId: 'UX-912',
         title: 'Фикс валидации логина',
       },
@@ -27,6 +29,7 @@ const data = [
       {
         assignee: 'user3',
         id: '3',
+        rating: 7,
         ticketId: 'UX-915',
         title: 'Редизайн страницы задач',
       },
@@ -40,6 +43,7 @@ const data = [
       {
         assignee: 'user4',
         id: '4',
+        rating: 9,
         ticketId: 'UX-901',
         title: 'Обновление зависимостей',
       },
@@ -75,7 +79,7 @@ export const Board = () => {
                   {card.ticketId}
                 </span>
                 <span className="bg-muted ml-auto rounded-xs px-1 text-xs">
-                  10
+                  {card.rating}
                 </span>
                 <Avatar className="h-6 w-6 rounded-lg">
                   <AvatarImage />
