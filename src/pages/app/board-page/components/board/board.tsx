@@ -1,16 +1,16 @@
-import type { DragEndEvent, DragOverEvent } from '@dnd-kit/core'
+import type { DragEndEvent, DragOverEvent, DragStartEvent } from '@dnd-kit/core'
 
 import {
   closestCenter,
   DndContext,
+  DragOverlay,
   MouseSensor,
   TouchSensor,
+  useDroppable,
   useSensor,
   useSensors,
 } from '@dnd-kit/core'
-import { restrictToWindowEdges } from '@dnd-kit/modifiers'
 import {
-  arrayMove,
   SortableContext,
   useSortable,
   verticalListSortingStrategy,
@@ -30,9 +30,9 @@ type Card = {
 }
 
 type Column = {
-  cards: Card[]
   id: string
   title: string
+  cards: Card[]
 }
 
 const initialData: Column[] = [
@@ -126,28 +126,26 @@ const initialData: Column[] = [
   },
 ]
 
-type SortableCardProps = {
+const CardView = ({
+  card,
+  className = '',
+  ref,
+  style,
+  ...props
+}: {
   card: Card
-}
-
-const SortableCard: React.FC<SortableCardProps> = ({ card }) => {
-  const { attributes, listeners, setNodeRef, transform, transition } =
-    useSortable({
-      id: card.id,
-    })
-  const style = {
-    transform: CSS.Translate.toString(transform),
-    transition,
-  }
-
+  className?: string
+  style?: React.CSSProperties
+} & React.HTMLAttributes<HTMLAnchorElement> & {
+    ref?: React.RefObject<HTMLAnchorElement | null>
+  }) => {
   return (
     <a
-      ref={setNodeRef}
+      ref={ref}
       style={style}
-      {...attributes}
-      {...listeners}
       href="#"
-      className="border-border hover:bg-muted rounded-xl border bg-white p-3 shadow-xs transition-colors">
+      className={`border-border hover:bg-muted grid rounded-xl border bg-white p-3 shadow-xs transition-colors ${className}`}
+      {...props}>
       <div className="text-foreground text-sm">{card.title}</div>
       <div className="text-mutedForeground mt-2 flex items-center justify-between gap-2 text-xs">
         <span className="bg-muted rounded-md px-2 py-0.5">{card.ticketId}</span>
@@ -171,15 +169,43 @@ const SortableCard: React.FC<SortableCardProps> = ({ card }) => {
   )
 }
 
-type ColumnContainerProps = {
-  column: Column
+const SortableCard: React.FC<{ card: Card }> = ({ card }) => {
+  const {
+    attributes,
+    isDragging,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+  } = useSortable({ id: card.id })
+
+  const style = {
+    opacity: isDragging ? 0.3 : 1,
+    transform: CSS.Translate.toString(transform),
+    transition,
+  }
+
+  return (
+    <CardView
+      ref={setNodeRef}
+      card={card}
+      className="touch-none"
+      style={style}
+      {...attributes}
+      {...listeners}
+    />
+  )
 }
 
-const ColumnContainer: React.FC<ColumnContainerProps> = ({ column }) => {
+const ColumnContainer: React.FC<{ column: Column }> = ({ column }) => {
+  const { isOver, setNodeRef } = useDroppable({ id: column.id })
+
   return (
     <div
-      id={column.id}
-      className="border-border flex flex-col gap-2 rounded-2xl border bg-gray-50 p-2">
+      ref={setNodeRef}
+      className={`border-border flex flex-col gap-2 rounded-2xl border p-2 ${
+        isOver ? 'bg-blue-100' : 'bg-gray-50'
+      }`}>
       <div className="flex items-center justify-between p-2">
         <span className="text-foreground text-md font-semibold">
           {column.title}
@@ -207,71 +233,101 @@ const ColumnContainer: React.FC<ColumnContainerProps> = ({ column }) => {
 
 export const Board: React.FC = () => {
   const [columns, setColumns] = useState<Column[]>(initialData)
+  const [activeCard, setActiveCard] = useState<Card | null>(null)
 
   const sensors = useSensors(useSensor(MouseSensor), useSensor(TouchSensor))
 
-  function findColumnId(cardId: string): string | undefined {
-    return columns.find((col) => col.cards.some((c) => c.id === cardId))?.id
+  const findColumnId = (cardId: string) =>
+    columns.find((col) => col.cards.some((c) => c.id === cardId))?.id
+
+  const handleDragStart = (event: DragStartEvent) => {
+    const cardId = event.active.id as string
+    const col = columns.find((col) => col.cards.some((c) => c.id === cardId))
+    const card = col?.cards.find((c) => c.id === cardId)
+    if (card) setActiveCard(card)
   }
 
-  function moveCardBetweenColumns(
-    cols: Column[],
-    cardId: string,
-    fromCol: string,
-    toCol: string,
-  ): Column[] {
-    const card = cols
-      .find((c) => c.id === fromCol)!
-      .cards.find((c) => c.id === cardId)!
-
-    return cols.map((c) => {
-      if (c.id === fromCol) {
-        return { ...c, cards: c.cards.filter((c) => c.id !== cardId) }
-      }
-      if (c.id === toCol) {
-        return { ...c, cards: [...c.cards, card] }
-      }
-      return c
-    })
-  }
-
-  function handleDragOver(event: DragOverEvent) {
+  const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event
-    if (!over) return
+    if (!over || active.id === over.id) {
+      setActiveCard(null)
+      return
+    }
+
+    const fromColId = findColumnId(active.id as string)
+    const toColId = findColumnId(over.id as string)
+    if (!fromColId || !toColId) {
+      setActiveCard(null)
+      return
+    }
+
+    const activeCardData = columns
+      .find((col) => col.id === fromColId)!
+      .cards.find((c) => c.id === active.id)!
+
+    setColumns((cols) =>
+      cols.map((col) => {
+        if (col.id === fromColId) {
+          return {
+            ...col,
+            cards: col.cards.filter((c) => c.id !== active.id),
+          }
+        }
+
+        if (col.id === toColId) {
+          const overIndex = col.cards.findIndex((c) => c.id === over.id)
+          const insertAt = overIndex >= 0 ? overIndex : col.cards.length
+          const newCards = [...col.cards]
+          newCards.splice(insertAt, 0, activeCardData)
+          return {
+            ...col,
+            cards: newCards,
+          }
+        }
+
+        return col
+      }),
+    )
+
+    setActiveCard(null)
+  }
+
+  const handleDragOver = (event: DragOverEvent) => {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
 
     const fromCol = findColumnId(active.id as string)
     const toCol = findColumnId(over.id as string) ?? over.id
 
-    if (fromCol && toCol && fromCol !== toCol) {
-      setColumns((cols) =>
-        moveCardBetweenColumns(
-          cols,
-          active.id as string,
-          fromCol,
-          toCol as string,
-        ),
-      )
-    }
-  }
+    if (!fromCol || !toCol || fromCol === toCol) return
 
-  function handleDragEnd(event: DragEndEvent) {
-    const { active, over } = event
-    if (!over || active.id === over.id) return
+    const activeCardData = columns
+      .find((col) => col.id === fromCol)!
+      .cards.find((c) => c.id === active.id)!
 
-    const colId = findColumnId(active.id as string)
-    if (!colId) return
+    const toColData = columns.find((col) => col.id === toCol)!
+    const alreadyExists = toColData.cards.find((c) => c.id === active.id)
+    if (alreadyExists) return // ⚠️ Не делать setState, если уже вставлено
 
     setColumns((cols) =>
       cols.map((col) => {
-        if (col.id !== colId) return col
-
-        const oldIndex = col.cards.findIndex((c) => c.id === active.id)
-        const newIndex = col.cards.findIndex((c) => c.id === over.id)
-
-        return {
-          ...col,
-          cards: arrayMove(col.cards, oldIndex, newIndex),
+        if (col.id === fromCol) {
+          return {
+            ...col,
+            cards: col.cards.filter((c) => c.id !== active.id),
+          }
         }
+        if (col.id === toCol) {
+          const overIndex = col.cards.findIndex((c) => c.id === over.id)
+          const insertIndex = overIndex >= 0 ? overIndex : col.cards.length
+          const newCards = [...col.cards]
+          newCards.splice(insertIndex, 0, activeCardData)
+          return {
+            ...col,
+            cards: newCards,
+          }
+        }
+        return col
       }),
     )
   }
@@ -280,9 +336,10 @@ export const Board: React.FC = () => {
     <DndContext
       sensors={sensors}
       collisionDetection={closestCenter}
-      modifiers={[restrictToWindowEdges]}
-      onDragOver={handleDragOver}
-      onDragEnd={handleDragEnd}>
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+      onDragCancel={() => setActiveCard(null)}
+      onDragOver={handleDragOver}>
       <div
         className="grid h-full gap-2"
         style={{
@@ -295,6 +352,10 @@ export const Board: React.FC = () => {
           />
         ))}
       </div>
+
+      <DragOverlay>
+        {activeCard ? <CardView card={activeCard} /> : null}
+      </DragOverlay>
     </DndContext>
   )
 }
