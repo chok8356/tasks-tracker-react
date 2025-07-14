@@ -1,9 +1,4 @@
-import type {
-  DragCancelEvent,
-  DragEndEvent,
-  DragOverEvent,
-  DragStartEvent,
-} from '@dnd-kit/core'
+import type { DragEndEvent, DragOverEvent } from '@dnd-kit/core'
 
 import {
   closestCenter,
@@ -13,6 +8,7 @@ import {
   useSensor,
   useSensors,
 } from '@dnd-kit/core'
+import { restrictToWindowEdges } from '@dnd-kit/modifiers'
 import {
   arrayMove,
   SortableContext,
@@ -21,7 +17,7 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { UserIcon } from 'lucide-react'
-import React, { useEffect, useState } from 'react'
+import React, { useState } from 'react'
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 
@@ -56,6 +52,20 @@ const initialData: Column[] = [
         ticketId: 'UX-912',
         title: 'Фикс валидации логина',
       },
+      {
+        assignee: 'user5',
+        id: '5',
+        rating: 6,
+        ticketId: 'DEV-001',
+        title: 'Настройка CI/CD для нового микросервиса',
+      },
+      {
+        assignee: 'user6',
+        id: '6',
+        rating: 7,
+        ticketId: 'FEAT-123',
+        title: 'Реализация темной темы для приложения',
+      },
     ],
     id: 'todo',
     title: 'TODO',
@@ -69,6 +79,20 @@ const initialData: Column[] = [
         ticketId: 'UX-915',
         title: 'Редизайн страницы задач',
       },
+      {
+        assignee: 'user7',
+        id: '7',
+        rating: 8,
+        ticketId: 'BUG-456',
+        title: 'Исправить баг с бесконечной прокруткой на мобильных',
+      },
+      {
+        assignee: 'user8',
+        id: '8',
+        rating: 6,
+        ticketId: 'PERF-789',
+        title: 'Оптимизация загрузки изображений на главной странице',
+      },
     ],
     id: 'in-progress',
     title: 'In Progress',
@@ -81,6 +105,20 @@ const initialData: Column[] = [
         rating: 9,
         ticketId: 'UX-901',
         title: 'Обновление зависимостей',
+      },
+      {
+        assignee: 'user9',
+        id: '9',
+        rating: 10,
+        ticketId: 'DEPLOY-001',
+        title: 'Развертывание новой версии на продакшн',
+      },
+      {
+        assignee: 'user10',
+        id: '10',
+        rating: 8,
+        ticketId: 'DOCS-010',
+        title: 'Обновление документации API',
       },
     ],
     id: 'done',
@@ -134,29 +172,10 @@ const SortableCard: React.FC<SortableCardProps> = ({ card }) => {
 }
 
 type ColumnContainerProps = {
-  activeId: string | null
   column: Column
-  overId: string | null
 }
 
-const ColumnContainer: React.FC<ColumnContainerProps> = ({
-  activeId,
-  column,
-  overId,
-}) => {
-  let placeholderIndex: number | null = null
-
-  if (activeId && overId) {
-    // Если курсор над карточкой этой колонки
-    if (column.cards.some((c) => c.id === overId)) {
-      placeholderIndex = column.cards.findIndex((c) => c.id === overId)
-    }
-    // Если колонка пустая и курсор над ней
-    if (overId === column.id && column.cards.length === 0) {
-      placeholderIndex = 0
-    }
-  }
-
+const ColumnContainer: React.FC<ColumnContainerProps> = ({ column }) => {
   return (
     <div
       id={column.id}
@@ -174,20 +193,12 @@ const ColumnContainer: React.FC<ColumnContainerProps> = ({
         items={column.cards.map((c) => c.id)}
         strategy={verticalListSortingStrategy}>
         <div className="flex flex-col gap-2">
-          {column.cards.map((card, index) => (
-            <React.Fragment key={card.id}>
-              {placeholderIndex === index && activeId && (
-                <div className="mb-2 rounded-xl border border-blue-500 bg-blue-50 p-2">
-                  Placeholder
-                </div>
-              )}
-              <SortableCard card={card} />
-            </React.Fragment>
+          {column.cards.map((card) => (
+            <SortableCard
+              key={card.id}
+              card={card}
+            />
           ))}
-
-          {placeholderIndex === column.cards.length && activeId && (
-            <div className="my-1 h-1 rounded bg-blue-500" />
-          )}
         </div>
       </SortableContext>
     </div>
@@ -196,14 +207,8 @@ const ColumnContainer: React.FC<ColumnContainerProps> = ({
 
 export const Board: React.FC = () => {
   const [columns, setColumns] = useState<Column[]>(initialData)
-  const [activeId, setActiveId] = useState<string | null>(null)
-  const [overId, setOverId] = useState<string | null>(null)
 
   const sensors = useSensors(useSensor(MouseSensor), useSensor(TouchSensor))
-
-  useEffect(() => {
-    document.body.style.overflow = activeId ? 'hidden' : ''
-  }, [activeId])
 
   function findColumnId(cardId: string): string | undefined {
     return columns.find((col) => col.cards.some((c) => c.id === cardId))?.id
@@ -218,6 +223,7 @@ export const Board: React.FC = () => {
     const card = cols
       .find((c) => c.id === fromCol)!
       .cards.find((c) => c.id === cardId)!
+
     return cols.map((c) => {
       if (c.id === fromCol) {
         return { ...c, cards: c.cards.filter((c) => c.id !== cardId) }
@@ -229,20 +235,13 @@ export const Board: React.FC = () => {
     })
   }
 
-  function handleDragStart(event: DragStartEvent) {
-    setActiveId(event.active.id as string)
-  }
-
   function handleDragOver(event: DragOverEvent) {
     const { active, over } = event
-    const newOverId = over?.id as string | null
-    if (newOverId !== overId) {
-      setOverId(newOverId)
-    }
-
     if (!over) return
+
     const fromCol = findColumnId(active.id as string)
     const toCol = findColumnId(over.id as string) ?? over.id
+
     if (fromCol && toCol && fromCol !== toCol) {
       setColumns((cols) =>
         moveCardBetweenColumns(
@@ -257,18 +256,18 @@ export const Board: React.FC = () => {
 
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event
-    setActiveId(null)
-    setOverId(null)
-
     if (!over || active.id === over.id) return
+
     const colId = findColumnId(active.id as string)
     if (!colId) return
 
     setColumns((cols) =>
       cols.map((col) => {
         if (col.id !== colId) return col
+
         const oldIndex = col.cards.findIndex((c) => c.id === active.id)
         const newIndex = col.cards.findIndex((c) => c.id === over.id)
+
         return {
           ...col,
           cards: arrayMove(col.cards, oldIndex, newIndex),
@@ -277,19 +276,13 @@ export const Board: React.FC = () => {
     )
   }
 
-  function handleDragCancel(_: DragCancelEvent) {
-    setActiveId(null)
-    setOverId(null)
-  }
-
   return (
     <DndContext
       sensors={sensors}
       collisionDetection={closestCenter}
-      onDragStart={handleDragStart}
+      modifiers={[restrictToWindowEdges]}
       onDragOver={handleDragOver}
-      onDragEnd={handleDragEnd}
-      onDragCancel={handleDragCancel}>
+      onDragEnd={handleDragEnd}>
       <div
         className="grid h-full gap-2"
         style={{
@@ -299,8 +292,6 @@ export const Board: React.FC = () => {
           <ColumnContainer
             key={column.id}
             column={column}
-            activeId={activeId}
-            overId={overId}
           />
         ))}
       </div>
