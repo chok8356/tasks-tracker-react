@@ -1,12 +1,10 @@
-import type { DragEndEvent, DragStartEvent } from '@dnd-kit/core'
+import type { DragEndEvent, DragOverEvent, DragStartEvent } from '@dnd-kit/core'
 
 import {
   closestCenter,
   DndContext,
   DragOverlay,
-  MeasuringStrategy,
-  MouseSensor,
-  TouchSensor,
+  PointerSensor,
   useSensor,
   useSensors,
 } from '@dnd-kit/core'
@@ -17,7 +15,7 @@ import { createPortal } from 'react-dom'
 import type { Card } from '@/pages/app/board-page/components/board/components/board-card.tsx'
 import type { Column } from '@/pages/app/board-page/components/board/components/board-column.tsx'
 
-import { BoardCard } from '@/pages/app/board-page/components/board/components/board-card.tsx'
+import { BoardCardContent } from '@/pages/app/board-page/components/board/components/board-card-content'
 import { BoardColumn } from '@/pages/app/board-page/components/board/components/board-column.tsx'
 
 export type Columns = Column[]
@@ -27,76 +25,129 @@ export const Board = ({
   onColumnsChange,
 }: {
   columns: Columns
-  onColumnsChange: (updated: Columns) => void
+  onColumnsChange: (updated: Columns | ((prev: Columns) => Columns)) => void
 }) => {
-  const sensors = useSensors(useSensor(MouseSensor), useSensor(TouchSensor))
-
+  // Используем PointerSensor для лучшей совместимости с разными устройствами
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        // Требуем, чтобы пользователь передвинул курсор на 9px, прежде чем начнется перетаскивание
+        distance: 9,
+      },
+    }),
+  )
   const [activeCard, setActiveCard] = useState<Card | null>(null)
+
+  const findColumnForCard = (
+    cardId: number,
+    currentColumns: Columns,
+  ): Column | undefined => {
+    return currentColumns.find((col) => col.cards.some((c) => c.id === cardId))
+  }
 
   const handleDragStart = (event: DragStartEvent) => {
     const cardId = event.active.id as number
-    const col = columns.find((col) => col.cards.some((c) => c.id === cardId))
+    const col = findColumnForCard(cardId, columns)
     const card = col?.cards.find((c) => c.id === cardId)
     if (card) setActiveCard(card)
   }
 
-  const handleDragEnd = (event: DragEndEvent) => {
+  const handleDragOver = (event: DragOverEvent) => {
     const { active, over } = event
+    if (!over) return
+
+    const activeId = active.id as number
+    const overId = over.id as number
+
+    if (activeId === overId) return
+
+    const activeColumn = findColumnForCard(activeId, columns)
+    // Элемент, над которым мы находимся, может быть как колонкой, так и другой карточкой
+    const overColumn =
+      columns.find((c) => c.id === overId) || findColumnForCard(overId, columns)
+
+    // *** КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ ***
+    // Вызываем обновление состояния, только если карточка переместилась в ДРУГУЮ колонку.
+    // Это предотвращает бесконечный цикл обновлений.
+    if (activeColumn && overColumn && activeColumn.id !== overColumn.id) {
+      onColumnsChange((currentColumns) => {
+        const activeItems =
+          currentColumns.find((c) => c.id === activeColumn.id)?.cards || []
+        const overItems =
+          currentColumns.find((c) => c.id === overColumn.id)?.cards || []
+
+        const activeIndex = activeItems.findIndex((c) => c.id === activeId)
+        const overIndex = overItems.findIndex((c) => c.id === overId)
+
+        const movingCard = activeItems[activeIndex]
+        if (!movingCard) return currentColumns
+
+        // Определяем новую позицию в колонке
+        const newIndex = overIndex >= 0 ? overIndex : overItems.length
+
+        return currentColumns.map((col) => {
+          // Удаляем карточку из старой колонки
+          if (col.id === activeColumn.id) {
+            return {
+              ...col,
+              cards: col.cards.filter((c) => c.id !== activeId),
+            }
+          }
+          // Добавляем карточку в новую колонку
+          if (col.id === overColumn.id) {
+            const newCards = [...col.cards]
+            newCards.splice(newIndex, 0, movingCard)
+            return { ...col, cards: newCards }
+          }
+          return col
+        })
+      })
+    }
+  }
+
+  const handleDragEnd = (event: DragEndEvent) => {
     setActiveCard(null)
-    if (!over || active.id === over.id) return
+    const { active, over } = event
+    if (!over) return
 
     const activeId = Number(active.id)
     const overId = Number(over.id)
 
-    const fromColumn = columns.find((col) =>
-      col.cards.some((card) => card.id === activeId),
-    )
-    const toColumn = columns.find((col) =>
-      col.cards.some((card) => card.id === overId),
-    )
+    const activeColumn = findColumnForCard(activeId, columns)
+    const overColumn = findColumnForCard(overId, columns)
 
-    if (!fromColumn || !toColumn) return
+    // Обрабатываем только сортировку внутри ОДНОЙ колонки.
+    // Перемещение между колонками уже обработано в onDragOver.
+    if (
+      activeColumn &&
+      overColumn &&
+      activeColumn.id === overColumn.id &&
+      activeId !== overId
+    ) {
+      const fromIndex = activeColumn.cards.findIndex((c) => c.id === activeId)
+      const toIndex = overColumn.cards.findIndex((c) => c.id === overId)
 
-    const fromIndex = fromColumn.cards.findIndex((c) => c.id === activeId)
-    const toIndex = toColumn.cards.findIndex((c) => c.id === overId)
-    const movingCard = fromColumn.cards[fromIndex]
-
-    const updatedColumns: Columns = columns.map((col) => {
-      if (col.id === fromColumn.id && col.id === toColumn.id) {
-        // сортировка внутри одной колонки
-        const newCards = [...col.cards]
-        const reordered = arrayMove(newCards, fromIndex, toIndex)
-        return { ...col, cards: reordered }
+      if (fromIndex !== toIndex) {
+        onColumnsChange((currentColumns) => {
+          return currentColumns.map((col) => {
+            if (col.id === activeColumn.id) {
+              return {
+                ...col,
+                cards: arrayMove(col.cards, fromIndex, toIndex),
+              }
+            }
+            return col
+          })
+        })
       }
-
-      if (col.id === fromColumn.id) {
-        return {
-          ...col,
-          cards: col.cards.filter((c) => c.id !== activeId),
-        }
-      }
-
-      if (col.id === toColumn.id) {
-        const newCards = [...col.cards]
-        newCards.splice(toIndex, 0, movingCard)
-        return { ...col, cards: newCards }
-      }
-
-      return col
-    })
-
-    onColumnsChange(updatedColumns)
+    }
   }
 
   return (
     <DndContext
       sensors={sensors}
-      measuring={{
-        droppable: {
-          strategy: MeasuringStrategy.Always,
-        },
-      }}
       onDragStart={handleDragStart}
+      onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
       collisionDetection={closestCenter}>
       <div
@@ -104,7 +155,6 @@ export const Board = ({
         style={{
           gridTemplateColumns: `repeat(${columns.length}, minmax(0, 1fr))`,
         }}>
-        {/* Колонки */}
         {columns.map((column) => (
           <BoardColumn
             key={column.id}
@@ -114,7 +164,7 @@ export const Board = ({
 
       {createPortal(
         <DragOverlay>
-          {activeCard ? <BoardCard card={activeCard} /> : null}
+          {activeCard ? <BoardCardContent card={activeCard} /> : null}
         </DragOverlay>,
         document.body,
       )}

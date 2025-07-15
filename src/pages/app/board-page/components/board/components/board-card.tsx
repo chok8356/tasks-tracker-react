@@ -2,9 +2,8 @@ import type { CSSProperties } from 'react'
 
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { UserIcon } from 'lucide-react'
 
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar.tsx'
+import { BoardCardContent } from './board-card-content'
 
 export type Card = {
   id: number
@@ -25,41 +24,21 @@ export const BoardCard = ({ card }: { card: Card }) => {
     id: card.id,
   })
 
+  // Стили для анимации и отображения
   const style: CSSProperties = {
-    opacity: isDragging ? 0.5 : 1,
+    // Делаем оригинальную карточку полупрозрачной во время перетаскивания
+    opacity: isDragging ? 0.4 : 1,
     transform: CSS.Translate.toString(transform),
     transition,
-    zIndex: isDragging ? 1 : 0,
   }
 
   return (
-    <a
+    <BoardCardContent
+      card={card}
+      ref={setNodeRef}
+      style={style}
       {...attributes}
       {...listeners}
-      style={style}
-      ref={setNodeRef}
-      key={card.id}
-      href="#"
-      className="border-border hover:bg-muted grid touch-none rounded-xl border bg-white p-3 shadow-xs transition-colors">
-      <div className="text-foreground text-sm">{card.title}</div>
-
-      <div className="text-mutedForeground mt-2 flex items-center justify-between gap-2 text-xs">
-        <span className="bg-muted rounded-md px-2 py-0.5">{card.ticketId}</span>
-
-        <span className="bg-muted ml-auto rounded-md px-2 py-0.5">
-          {card.estimate}
-        </span>
-
-        <Avatar className="h-6 w-6 rounded-md">
-          <AvatarImage />
-          <AvatarFallback className="rounded-md">
-            <UserIcon
-              size={16}
-              className="text-gray-400"
-            />
-          </AvatarFallback>
-        </Avatar>
-      </div>
-    </a>
+    />
   )
 }
