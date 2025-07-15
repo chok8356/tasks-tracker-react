@@ -1,35 +1,21 @@
-import type { CSSProperties } from 'react'
-
-import { useSortable } from '@dnd-kit/sortable'
+import { useDraggable } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
 import { UserIcon } from 'lucide-react'
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar.tsx'
 
-export type Card = {
+export const BoardCard = (props: {
   id: number
   title: string
   ticketId: string
   estimate: number
-}
-
-export const BoardCard = ({ card }: { card: Card }) => {
-  const {
-    attributes,
-    isDragging,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-  } = useSortable({
-    id: card.id,
+}) => {
+  const { attributes, listeners, setNodeRef, transform } = useDraggable({
+    id: props.id,
   })
 
-  const style: CSSProperties = {
-    opacity: isDragging ? 0.5 : 1,
+  const style = {
     transform: CSS.Translate.toString(transform),
-    transition,
-    zIndex: isDragging ? 1 : 0,
   }
 
   return (
@@ -38,16 +24,18 @@ export const BoardCard = ({ card }: { card: Card }) => {
       {...listeners}
       style={style}
       ref={setNodeRef}
-      key={card.id}
+      key={props.id}
       href="#"
-      className="border-border hover:bg-muted grid touch-none rounded-xl border bg-white p-3 shadow-xs transition-colors">
-      <div className="text-foreground text-sm">{card.title}</div>
+      className="border-border hover:bg-muted grid rounded-xl border bg-white p-3 shadow-xs transition-colors">
+      <div className="text-foreground text-sm">{props.title}</div>
 
       <div className="text-mutedForeground mt-2 flex items-center justify-between gap-2 text-xs">
-        <span className="bg-muted rounded-md px-2 py-0.5">{card.ticketId}</span>
+        <span className="bg-muted rounded-md px-2 py-0.5">
+          {props.ticketId}
+        </span>
 
         <span className="bg-muted ml-auto rounded-md px-2 py-0.5">
-          {card.estimate}
+          {props.estimate}
         </span>
 
         <Avatar className="h-6 w-6 rounded-md">
