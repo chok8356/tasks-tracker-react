@@ -24,9 +24,7 @@ export const BoardCard = ({ card }: { card: Card }) => {
     id: card.id,
   })
 
-  // Стили для анимации и отображения
   const style: CSSProperties = {
-    // Делаем оригинальную карточку полупрозрачной во время перетаскивания
     opacity: isDragging ? 0.4 : 1,
     transform: CSS.Translate.toString(transform),
     transition,

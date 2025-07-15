@@ -1,30 +1,23 @@
-import type {
-  CollisionDetection,
-  DragEndEvent,
-  DragOverEvent,
-  DragStartEvent,
-} from '@dnd-kit/core'
+import type { DragEndEvent, DragOverEvent, DragStartEvent } from '@dnd-kit/core'
 
 import {
-  closestCenter,
+  closestCorners,
   DndContext,
   DragOverlay,
-  getFirstCollision,
-  PointerSensor,
-  pointerWithin,
-  rectIntersection,
+  MeasuringStrategy,
+  MouseSensor,
+  TouchSensor,
   useSensor,
   useSensors,
 } from '@dnd-kit/core'
-import { arrayMove } from '@dnd-kit/sortable'
-import { useCallback, useRef, useState } from 'react'
+import { useState } from 'react'
 import { createPortal } from 'react-dom'
 
-import type { Card } from '@/pages/app/board-page/components/board/components/board-card.tsx'
-import type { Column } from '@/pages/app/board-page/components/board/components/board-column.tsx'
+import type { Card } from './components/board-card'
+import type { Column } from './components/board-column'
 
-import { BoardCardContent } from '@/pages/app/board-page/components/board/components/board-card-content'
-import { BoardColumn } from '@/pages/app/board-page/components/board/components/board-column.tsx'
+import { BoardCardContent } from './components/board-card-content'
+import { BoardColumn } from './components/board-column'
 
 export type Columns = Column[]
 
@@ -35,209 +28,137 @@ export const Board = ({
   columns: Columns
   onColumnsChange: (updated: Columns | ((prev: Columns) => Columns)) => void
 }) => {
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 9,
-      },
-    }),
+  const sensors = useSensors(useSensor(MouseSensor), useSensor(TouchSensor))
+  const [localColumns, setLocalColumns] = useState<Columns>(() =>
+    structuredClone(columns),
   )
   const [activeCard, setActiveCard] = useState<Card | null>(null)
-  const [activeId, setActiveId] = useState<number | null>(null)
-  const lastOverId = useRef<number | null>(null)
 
-  const findColumnForCard = (
-    cardId: number,
-    currentColumns: Columns,
-  ): Column | undefined => {
-    return currentColumns.find((col) =>
-      col.cards.some((card) => card.id === cardId),
+  const findColumnByCardId = (id: number) =>
+    localColumns.find((col) => col.cards.some((card) => card.id === id))
+
+  const getCardIndex = (col: Column, id: number) =>
+    col.cards.findIndex((c) => c.id === id)
+
+  const handleDragStart = ({ active }: DragStartEvent) => {
+    const id = active.id as number
+    const col = findColumnByCardId(id)
+    const card = col?.cards.find((c) => c.id === id) ?? null
+
+    setActiveCard(card)
+  }
+
+  const handleDragOver = ({ active, over }: DragOverEvent) => {
+    if (!over) return
+
+    const activeId = active.id as number
+    const overId = over.id as number
+    if (activeId === overId) return
+
+    const source = findColumnByCardId(activeId)
+    const target = findColumnByCardId(overId)
+    if (!source || !target) return
+
+    const activeIndex = getCardIndex(source, activeId)
+    const overIndex = getCardIndex(target, overId)
+    if (activeIndex === -1 || overIndex === -1) return
+
+    const activeCard = source.cards[activeIndex]
+    if (!activeCard) return
+
+    const isBelowOverItem =
+      active.rect.current.translated &&
+      active.rect.current.translated.top > over.rect.top + over.rect.height
+
+    const modifier = isBelowOverItem ? 1 : 0
+    const insertIndex = overIndex + modifier
+
+    if (source.id === target.id) {
+      const reordered = [...source.cards]
+      reordered.splice(activeIndex, 1)
+      reordered.splice(
+        insertIndex > reordered.length ? reordered.length : insertIndex,
+        0,
+        activeCard,
+      )
+
+      // не обновлять если ничего не поменялось
+      const same =
+        reordered.length === source.cards.length &&
+        reordered.every((c, i) => c.id === source.cards[i].id)
+      if (same) return
+
+      setLocalColumns((cols) =>
+        cols.map((col) =>
+          col.id === source.id ? { ...col, cards: reordered } : col,
+        ),
+      )
+      return
+    }
+
+    // === перенос между колонками ===
+
+    const sourceCards = [...source.cards]
+    const [moved] = sourceCards.splice(activeIndex, 1)
+
+    const targetCards = [...target.cards]
+    if (targetCards.some((c) => c.id === activeId)) return
+
+    targetCards.splice(
+      insertIndex > targetCards.length ? targetCards.length : insertIndex,
+      0,
+      moved,
+    )
+
+    setLocalColumns((cols) =>
+      cols.map((col) => {
+        if (col.id === source.id) {
+          return { ...col, cards: sourceCards }
+        } else if (col.id === target.id) {
+          return { ...col, cards: targetCards }
+        } else {
+          return col
+        }
+      }),
     )
   }
 
-  const collisionDetectionStrategy: CollisionDetection = useCallback(
-    (args) => {
-      if (activeId !== null && columns.some((col) => col.id === activeId)) {
-        return closestCenter({
-          ...args,
-          droppableContainers: args.droppableContainers.filter((container) =>
-            columns.some((col) => col.id === container.id),
-          ),
-        })
-      }
-
-      const pointerIntersections = pointerWithin(args)
-      const intersections =
-        pointerIntersections.length > 0
-          ? pointerIntersections
-          : rectIntersection(args)
-
-      let overId = getFirstCollision(intersections, 'id')
-
-      if (overId != null) {
-        const overColumn = columns.find((col) => col.id === overId)
-
-        if (overColumn) {
-          const columnCards = overColumn.cards.map((card) => card.id)
-
-          if (columnCards.length > 0) {
-            const closestCardInColumn = closestCenter({
-              ...args,
-              droppableContainers: args.droppableContainers.filter(
-                (container) =>
-                  container.id !== overId &&
-                  columnCards.includes(container.id as number),
-              ),
-            })[0]?.id
-
-            if (closestCardInColumn) {
-              overId = closestCardInColumn
-            }
-          }
-        }
-
-        lastOverId.current = Number(overId)
-        return [{ id: overId }]
-      }
-
-      return lastOverId.current ? [{ id: lastOverId.current }] : []
-    },
-    [activeId, columns],
-  )
-
-  const handleDragStart = (event: DragStartEvent) => {
-    const { active } = event
-    const cardId = active.id as number
-    setActiveId(cardId)
-    const column = findColumnForCard(cardId, columns)
-    if (column) {
-      setActiveCard(column.cards.find((card) => card.id === cardId) || null)
-    }
-  }
-
-  const handleDragOver = (event: DragOverEvent) => {
-    const { active, over } = event
-    if (!over) return
-
-    const activeId = active.id as number
-    const overId = over.id as number
-
-    if (activeId === overId) return
-
-    const activeColumn = findColumnForCard(activeId, columns)
-    const overColumn =
-      columns.find((c) => c.id === overId) || findColumnForCard(overId, columns)
-
-    if (activeColumn && overColumn && activeColumn.id !== overColumn.id) {
-      onColumnsChange((currentColumns) => {
-        const newColumns = currentColumns.map((col) => ({
-          ...col,
-          cards: [...col.cards],
-        }))
-
-        const sourceColumnIndex = newColumns.findIndex(
-          (col) => col.id === activeColumn.id,
-        )
-        const destinationColumnIndex = newColumns.findIndex(
-          (col) => col.id === overColumn.id,
-        )
-
-        if (sourceColumnIndex === -1 || destinationColumnIndex === -1) {
-          return currentColumns
-        }
-
-        const sourceCards = newColumns[sourceColumnIndex].cards
-        const destinationCards = newColumns[destinationColumnIndex].cards
-
-        const activeCardIndex = sourceCards.findIndex(
-          (card) => card.id === activeId,
-        )
-        const [movingCard] = sourceCards.splice(activeCardIndex, 1)
-
-        if (!movingCard) {
-          return currentColumns
-        }
-
-        let newCardIndexInDestination: number
-        if (overId === overColumn.id) {
-          newCardIndexInDestination = destinationCards.length
-        } else {
-          newCardIndexInDestination = destinationCards.findIndex(
-            (card) => card.id === overId,
-          )
-          if (newCardIndexInDestination === -1) {
-            newCardIndexInDestination = destinationCards.length
-          }
-        }
-
-        destinationCards.splice(newCardIndexInDestination, 0, movingCard)
-
-        return newColumns
-      })
-    }
-  }
-
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event
+  const handleDragEnd = ({ active, over }: DragEndEvent) => {
     setActiveCard(null)
-    setActiveId(null)
-    lastOverId.current = null
 
     if (!over) return
 
     const activeId = active.id as number
     const overId = over.id as number
-
     if (activeId === overId) return
 
-    const activeColumn = findColumnForCard(activeId, columns)
-    const overColumn = findColumnForCard(overId, columns)
-
-    if (
-      activeColumn &&
-      overColumn &&
-      activeColumn.id === overColumn.id &&
-      activeId !== overId
-    ) {
-      onColumnsChange((currentColumns) => {
-        const targetColumn = currentColumns.find(
-          (col) => col.id === activeColumn.id,
-        )
-        if (!targetColumn) return currentColumns
-
-        const oldIndex = targetColumn.cards.findIndex((c) => c.id === activeId)
-        const newIndex = targetColumn.cards.findIndex((c) => c.id === overId)
-
-        if (oldIndex === -1 || newIndex === -1) return currentColumns
-
-        const reorderedCards = arrayMove(targetColumn.cards, oldIndex, newIndex)
-
-        return currentColumns.map((col) =>
-          col.id === targetColumn.id ? { ...col, cards: reorderedCards } : col,
-        )
-      })
-    }
+    onColumnsChange(localColumns)
   }
 
   return (
     <DndContext
       sensors={sensors}
+      measuring={{
+        droppable: {
+          strategy: MeasuringStrategy.Always,
+        },
+      }}
       onDragStart={handleDragStart}
       onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
-      collisionDetection={collisionDetectionStrategy}>
+      collisionDetection={closestCorners}>
       <div
         className="grid h-full grid-rows-[1fr] gap-2"
         style={{
-          gridTemplateColumns: `repeat(${columns.length}, minmax(0, 1fr))`,
+          gridTemplateColumns: `repeat(${localColumns.length}, minmax(0, 1fr))`,
         }}>
-        {columns.map((column) => (
+        {localColumns.map((column) => (
           <BoardColumn
             key={column.id}
-            column={column}></BoardColumn>
+            column={column}
+          />
         ))}
       </div>
-
       {createPortal(
         <DragOverlay>
           {activeCard ? <BoardCardContent card={activeCard} /> : null}
