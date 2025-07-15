@@ -1,16 +1,15 @@
 import type { DragEndEvent, DragOverEvent, DragStartEvent } from '@dnd-kit/core'
 
 import {
-  closestCorners,
   DndContext,
   DragOverlay,
-  MeasuringStrategy,
   MouseSensor,
+  rectIntersection,
   TouchSensor,
   useSensor,
   useSensors,
 } from '@dnd-kit/core'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 
 import type { Card } from './components/board-card'
@@ -28,14 +27,19 @@ export const Board = ({
   columns: Columns
   onColumnsChange: (updated: Columns | ((prev: Columns) => Columns)) => void
 }) => {
+  const rafId = useRef<number | null>(null)
+  const latestDragOverEvent = useRef<DragOverEvent | null>(null)
+
   const sensors = useSensors(useSensor(MouseSensor), useSensor(TouchSensor))
-  const [localColumns, setLocalColumns] = useState<Columns>(() =>
+
+  const [clonedColumns, setClonedColumns] = useState<Columns>(() =>
     structuredClone(columns),
   )
+
   const [activeCard, setActiveCard] = useState<Card | null>(null)
 
   const findColumnByCardId = (id: number) =>
-    localColumns.find((col) => col.cards.some((card) => card.id === id))
+    clonedColumns.find((col) => col.cards.some((card) => card.id === id))
 
   const getCardIndex = (col: Column, id: number) =>
     col.cards.findIndex((c) => c.id === id)
@@ -48,81 +52,6 @@ export const Board = ({
     setActiveCard(card)
   }
 
-  const handleDragOver = ({ active, over }: DragOverEvent) => {
-    if (!over) return
-
-    const activeId = active.id as number
-    const overId = over.id as number
-    if (activeId === overId) return
-
-    const source = findColumnByCardId(activeId)
-    const target = findColumnByCardId(overId)
-    if (!source || !target) return
-
-    const activeIndex = getCardIndex(source, activeId)
-    const overIndex = getCardIndex(target, overId)
-    if (activeIndex === -1 || overIndex === -1) return
-
-    const activeCard = source.cards[activeIndex]
-    if (!activeCard) return
-
-    const isBelowOverItem =
-      active.rect.current.translated &&
-      active.rect.current.translated.top > over.rect.top + over.rect.height
-
-    const modifier = isBelowOverItem ? 1 : 0
-    const insertIndex = overIndex + modifier
-
-    if (source.id === target.id) {
-      const reordered = [...source.cards]
-      reordered.splice(activeIndex, 1)
-      reordered.splice(
-        insertIndex > reordered.length ? reordered.length : insertIndex,
-        0,
-        activeCard,
-      )
-
-      // не обновлять если ничего не поменялось
-      const same =
-        reordered.length === source.cards.length &&
-        reordered.every((c, i) => c.id === source.cards[i].id)
-      if (same) return
-
-      setLocalColumns((cols) =>
-        cols.map((col) =>
-          col.id === source.id ? { ...col, cards: reordered } : col,
-        ),
-      )
-      return
-    }
-
-    // === перенос между колонками ===
-
-    const sourceCards = [...source.cards]
-    const [moved] = sourceCards.splice(activeIndex, 1)
-
-    const targetCards = [...target.cards]
-    if (targetCards.some((c) => c.id === activeId)) return
-
-    targetCards.splice(
-      insertIndex > targetCards.length ? targetCards.length : insertIndex,
-      0,
-      moved,
-    )
-
-    setLocalColumns((cols) =>
-      cols.map((col) => {
-        if (col.id === source.id) {
-          return { ...col, cards: sourceCards }
-        } else if (col.id === target.id) {
-          return { ...col, cards: targetCards }
-        } else {
-          return col
-        }
-      }),
-    )
-  }
-
   const handleDragEnd = ({ active, over }: DragEndEvent) => {
     setActiveCard(null)
 
@@ -132,27 +61,97 @@ export const Board = ({
     const overId = over.id as number
     if (activeId === overId) return
 
-    onColumnsChange(localColumns)
+    onColumnsChange(clonedColumns)
   }
+
+  const handleDragOver = (event: DragOverEvent) => {
+    latestDragOverEvent.current = event
+    if (rafId.current !== null) return
+
+    rafId.current = requestAnimationFrame(() => {
+      rafId.current = null
+      const e = latestDragOverEvent.current
+      if (!e) return
+
+      const { active, over } = e
+      if (!active || !over) return
+
+      const activeId = active.id as number
+      const overId = over.id as number
+      if (activeId === overId) return
+
+      const sourceCol = findColumnByCardId(activeId)
+      const targetCol =
+        clonedColumns.find((col) => col.cards.some((c) => c.id === overId)) ??
+        clonedColumns.find((col) => col.id === overId)
+
+      if (!sourceCol || !targetCol) return
+
+      const sourceColIndex = clonedColumns.findIndex(
+        (col) => col.id === sourceCol.id,
+      )
+      const targetColIndex = clonedColumns.findIndex(
+        (col) => col.id === targetCol.id,
+      )
+
+      const sourceCardIndex = getCardIndex(sourceCol, activeId)
+      const overCardIndex = getCardIndex(targetCol, overId)
+
+      const activeCard = sourceCol.cards[sourceCardIndex]
+      if (!activeCard) return
+
+      const isSameColumn = sourceCol.id === targetCol.id
+      const movingWithinSameColumn =
+        isSameColumn &&
+        (sourceCardIndex === overCardIndex ||
+          sourceCardIndex === overCardIndex - 1)
+
+      if (movingWithinSameColumn) return
+
+      setClonedColumns((prev) => {
+        const next = structuredClone(prev)
+
+        const fromCards = next[sourceColIndex].cards
+        const toCards = next[targetColIndex].cards
+
+        fromCards.splice(sourceCardIndex, 1)
+
+        let insertIndex: number
+        if (toCards.length === 0 || overCardIndex === -1) {
+          insertIndex = toCards.length
+        } else {
+          insertIndex =
+            isSameColumn && sourceCardIndex < overCardIndex
+              ? overCardIndex - 1
+              : overCardIndex
+        }
+
+        toCards.splice(insertIndex, 0, activeCard)
+
+        return next
+      })
+    })
+  }
+
+  useEffect(() => {
+    return () => {
+      if (rafId.current !== null) cancelAnimationFrame(rafId.current)
+    }
+  }, [])
 
   return (
     <DndContext
       sensors={sensors}
-      measuring={{
-        droppable: {
-          strategy: MeasuringStrategy.Always,
-        },
-      }}
       onDragStart={handleDragStart}
       onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
-      collisionDetection={closestCorners}>
+      collisionDetection={rectIntersection}>
       <div
         className="grid h-full grid-rows-[1fr] gap-2"
         style={{
-          gridTemplateColumns: `repeat(${localColumns.length}, minmax(0, 1fr))`,
+          gridTemplateColumns: `repeat(${clonedColumns.length}, minmax(0, 1fr))`,
         }}>
-        {localColumns.map((column) => (
+        {clonedColumns.map((column) => (
           <BoardColumn
             key={column.id}
             column={column}
