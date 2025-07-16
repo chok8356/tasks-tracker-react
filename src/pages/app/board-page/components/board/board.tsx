@@ -153,7 +153,7 @@ const BoardColumn = ({
       className="grid w-75 min-w-75 grid-rows-[auto_1fr] gap-2 rounded-xl border bg-gray-50 p-2">
       <div className="flex items-center justify-between p-2">
         <span className="text-md font-semibold">{title}</span>
-        <span className="text-muted bg-muted rounded-lg px-2 py-0.5 text-sm">
+        <span className="bg-muted rounded-lg px-2 py-0.5 text-sm font-medium">
           {cardIds.length}
         </span>
       </div>
