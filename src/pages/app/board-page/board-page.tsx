@@ -1,11 +1,11 @@
 import { useState } from 'react'
 
-import type { Columns } from '@/pages/app/board-page/components/board/board.tsx'
+import type { ColumnsData } from '@/pages/app/board-page/components/board/board.tsx'
 
 import { Board } from '@/pages/app/board-page/components/board/board.tsx'
 
 export const BoardPage = () => {
-  const data: Columns = [
+  const data: ColumnsData = [
     {
       cards: [
         {
@@ -86,7 +86,7 @@ export const BoardPage = () => {
     },
   ]
 
-  const [columns, setColumns] = useState<Columns>(data)
+  const [columns, setColumns] = useState<ColumnsData>(data)
 
   return (
     <div className="h-full">
