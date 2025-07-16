@@ -1,6 +1,5 @@
 import { useDroppable } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
-import { useMemo } from 'react'
 
 import type { Card } from '@/pages/app/board-page/components/board/components/board-card.tsx'
 
@@ -15,13 +14,11 @@ export type Column = {
 export const BoardColumn = ({ column }: { column: Column }) => {
   const { setNodeRef } = useDroppable({ id: column.id })
 
-  const cardIds = useMemo(() => column.cards.map((c) => c.id), [column.cards])
-
   return (
     <div
       ref={setNodeRef}
       key={column.id}
-      className="border-border grid grid-rows-[auto_1fr] gap-2 rounded-2xl border bg-gray-50 p-2">
+      className="border-border grid w-75 min-w-75 grid-rows-[auto_1fr] gap-2 rounded-2xl border bg-gray-50 p-2">
       {/* Title */}
       <div className="flex items-center justify-between p-2">
         <span className="text-foreground text-md font-semibold">
@@ -35,7 +32,7 @@ export const BoardColumn = ({ column }: { column: Column }) => {
       {/* Cards */}
       <div className="flex flex-col gap-2">
         <SortableContext
-          items={cardIds}
+          items={column.cards}
           strategy={verticalListSortingStrategy}>
           {column.cards.map((card) => (
             <BoardCard
