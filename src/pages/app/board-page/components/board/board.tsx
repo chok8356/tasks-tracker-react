@@ -1,11 +1,16 @@
-import type { DragOverEvent, DragStartEvent } from '@dnd-kit/core'
+import type {
+  CollisionDetection,
+  DragEndEvent,
+  DragOverEvent,
+  DragStartEvent,
+} from '@dnd-kit/core'
 import type { CSSProperties, Ref } from 'react'
 
 import {
+  closestCenter,
   DndContext,
   DragOverlay,
   MouseSensor,
-  rectIntersection,
   TouchSensor,
   useDroppable,
   useSensor,
@@ -18,7 +23,7 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { UserIcon } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar.tsx'
@@ -49,7 +54,7 @@ type Card = {
 
 type CardsData = Map<Card['id'], Card>
 
-type ColumnsMapIds = [Column['id'], Card['id'][]][]
+export type ColumnsMapIds = [Column['id'], Card['id'][]][]
 
 export const normalizeColumnsData = (
   data: ColumnsData,
@@ -178,6 +183,7 @@ const BoardColumn = ({
 
 export const Board = ({
   columns: initialColumnsData,
+  onColumnsChange,
 }: {
   columns: ColumnsData
   onColumnsChange: (updated: ColumnsData) => void
@@ -193,77 +199,243 @@ export const Board = ({
     useState<ColumnsMapIds>(initialMapIds)
   const [activeCard, setActiveCard] = useState<Card | null>(null)
 
-  const handleDragStart = (event: DragStartEvent) => {
-    const { active } = event
-    const card = cardsData.get(active.id as number)
-    if (card) {
-      setActiveCard(card)
-    }
-  }
+  useEffect(() => {
+    setColumnsMapIds(initialMapIds)
+  }, [initialMapIds])
 
-  const handleDragOver = (event: DragOverEvent) => {
-    const { active, over } = event
-    if (!over || active.id === over.id) return
+  const animationFrameId = useRef<number | null>(null)
 
-    const activeId = active.id as number
-    const overId = over.id as number
+  const nextColumnsMapIds = useRef<ColumnsMapIds>(columnsMapIds)
 
-    let activeColId: number | null = null
-    let overColId: number | null = null
+  const findColumn = useCallback(
+    (id: number) => {
+      const column = columnsMapIds.find(([colId]) => colId === id)
+      if (column) return column[0]
 
-    for (const [colId, cardIds] of columnsMapIds) {
-      if (cardIds.includes(activeId)) activeColId = colId
-      if (colId === overId || cardIds.includes(overId)) overColId = colId
-    }
+      for (const [colId, cardIds] of columnsMapIds) {
+        if (cardIds.includes(id as number)) return colId
+      }
+      return null
+    },
+    [columnsMapIds],
+  )
 
-    if (!activeColId || !overColId || activeColId === overColId) return
+  const handleDragStart = useCallback(
+    (event: DragStartEvent) => {
+      const { active } = event
+      const card = cardsData.get(active.id as number)
+      if (card) {
+        setActiveCard(card)
+      }
 
-    setColumnsMapIds((prev) => {
-      const updated: ColumnsMapIds = []
+      if (animationFrameId.current) {
+        cancelAnimationFrame(animationFrameId.current)
+        animationFrameId.current = null
+      }
+      nextColumnsMapIds.current = columnsMapIds
+    },
+    [cardsData, columnsMapIds],
+  )
 
-      for (const [colId, cardIds] of prev) {
-        if (colId === activeColId) {
-          updated.push([colId, cardIds.filter((id) => id !== activeId)])
-        } else if (colId === overColId) {
-          const index = cardIds.indexOf(overId)
-          const insertAt = index >= 0 ? index : cardIds.length
-          const next = [...cardIds]
-          next.splice(insertAt, 0, activeId)
-          updated.push([colId, next])
-        } else {
-          updated.push([colId, cardIds])
+  const handleDragOver = useCallback(
+    (event: DragOverEvent) => {
+      const { active, over } = event
+      if (!over || active.id === over.id) return
+
+      const activeId = active.id as number
+      const overId = over.id as number
+
+      const activeColId = findColumn(activeId)
+      const overColId = findColumn(overId)
+
+      if (!activeColId || !overColId) return
+
+      if (activeColId === overColId) {
+        return
+      }
+
+      if (animationFrameId.current) {
+        cancelAnimationFrame(animationFrameId.current)
+      }
+
+      animationFrameId.current = requestAnimationFrame(() => {
+        setColumnsMapIds((prev) => {
+          const updated: ColumnsMapIds = []
+          let activeCardMoved = false
+
+          for (const [colId, cardIds] of prev) {
+            if (colId === activeColId) {
+              updated.push([colId, cardIds.filter((id) => id !== activeId)])
+            } else if (colId === overColId) {
+              const nextCardIds = [...cardIds]
+              const insertIndex = nextCardIds.includes(overId)
+                ? nextCardIds.indexOf(overId)
+                : nextCardIds.length
+
+              if (!activeCardMoved) {
+                nextCardIds.splice(insertIndex, 0, activeId)
+                activeCardMoved = true
+              }
+              updated.push([colId, nextCardIds])
+            } else {
+              updated.push([colId, cardIds])
+            }
+          }
+          nextColumnsMapIds.current = updated
+          return updated
+        })
+        animationFrameId.current = null
+      })
+    },
+    [findColumn],
+  )
+
+  const handleDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      if (animationFrameId.current) {
+        cancelAnimationFrame(animationFrameId.current)
+        animationFrameId.current = null
+      }
+      setActiveCard(null)
+
+      const { active, over } = event
+      const activeId = active.id as number
+      const overId = over?.id as number
+
+      let finalColumnsMapIds = nextColumnsMapIds.current
+
+      const activeColId = findColumn(activeId)
+      const overColId = findColumn(overId)
+
+      if (activeColId && overColId && activeColId === overColId) {
+        const currentColumnIndex = finalColumnsMapIds.findIndex(
+          ([colId]) => colId === activeColId,
+        )
+        if (currentColumnIndex !== -1) {
+          const currentCardIds = [...finalColumnsMapIds[currentColumnIndex][1]]
+          const oldIndex = currentCardIds.indexOf(activeId)
+          const newIndex = currentCardIds.indexOf(overId)
+
+          if (oldIndex !== -1 && newIndex !== -1) {
+            const [removed] = currentCardIds.splice(oldIndex, 1)
+            currentCardIds.splice(newIndex, 0, removed)
+
+            finalColumnsMapIds = finalColumnsMapIds.map(([colId, cardIds]) =>
+              colId === activeColId
+                ? [colId, currentCardIds]
+                : [colId, cardIds],
+            ) as ColumnsMapIds
+          } else if (oldIndex !== -1 && !overId && currentCardIds.length > 0) {
+            const [removed] = currentCardIds.splice(oldIndex, 1)
+            currentCardIds.push(removed)
+            finalColumnsMapIds = finalColumnsMapIds.map(([colId, cardIds]) =>
+              colId === activeColId
+                ? [colId, currentCardIds]
+                : [colId, cardIds],
+            ) as ColumnsMapIds
+          }
         }
       }
 
-      return updated
-    })
-  }
+      const newColumnsData = finalColumnsMapIds.map(([colId, cardIds]) => {
+        const originalColumn = initialColumnsData.find((c) => c.id === colId)
+        return {
+          cards: cardIds.map((id) => cardsData.get(id)!),
+          id: colId,
+          title: originalColumn?.title || `Column ${colId}`,
+        }
+      })
+      onColumnsChange(newColumnsData)
 
-  const handleDragEnd = () => {
+      nextColumnsMapIds.current = newColumnsData.map((col) => [
+        col.id,
+        col.cards.map((c) => c.id),
+      ])
+    },
+    [cardsData, initialColumnsData, onColumnsChange, findColumn],
+  )
+
+  const handleDragCancel = useCallback(() => {
+    if (animationFrameId.current) {
+      cancelAnimationFrame(animationFrameId.current)
+      animationFrameId.current = null
+    }
     setActiveCard(null)
-  }
-  const handleDragCancel = () => {
-    setActiveCard(null)
-  }
+
+    const newColumnsData = columnsMapIds.map(([colId, cardIds]) => {
+      const originalColumn = initialColumnsData.find((c) => c.id === colId)
+      return {
+        cards: cardIds.map((id) => cardsData.get(id)!),
+        id: colId,
+        title: originalColumn?.title || `Column ${colId}`,
+      }
+    })
+    onColumnsChange(newColumnsData)
+  }, [columnsMapIds, cardsData, initialColumnsData, onColumnsChange])
+
+  const customCollisionDetection: CollisionDetection = useCallback(
+    (args) => {
+      const { droppableContainers } = args
+
+      const columnCollisions = closestCenter({
+        ...args,
+        droppableContainers: droppableContainers.filter((container) =>
+          columnsMapIds.some(([colId]) => colId === container.id),
+        ),
+      })
+
+      if (!columnCollisions.length) {
+        return []
+      }
+
+      const closestColumn = columnCollisions[0]
+      const closestColumnId = closestColumn.id
+
+      const cardCollisions = closestCenter({
+        ...args,
+        droppableContainers: droppableContainers.filter((container) => {
+          const cardIdsInClosestColumn = columnsMapIds.find(
+            ([colId]) => colId === closestColumnId,
+          )?.[1]
+          return (
+            cardIdsInClosestColumn &&
+            cardIdsInClosestColumn.includes(container.id as number)
+          )
+        }),
+      })
+
+      if (cardCollisions.length > 0) {
+        return cardCollisions
+      }
+
+      return columnCollisions
+    },
+    [columnsMapIds],
+  )
 
   return (
     <DndContext
       sensors={sensors}
-      collisionDetection={rectIntersection}
+      collisionDetection={customCollisionDetection}
       onDragStart={handleDragStart}
       onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
       onDragCancel={handleDragCancel}>
       <div className="flex h-full gap-2">
-        {columnsMapIds.map(([columnId, cardIds]) => (
-          <BoardColumn
-            key={columnId}
-            columnId={columnId}
-            title={`Column ${columnId}`}
-            cardIds={cardIds}
-            cardsData={cardsData}
-          />
-        ))}
+        {columnsMapIds.map(([columnId, cardIds]) => {
+          const columnTitle =
+            initialColumnsData.find((col) => col.id === columnId)?.title ||
+            `Column ${columnId}`
+          return (
+            <BoardColumn
+              key={columnId}
+              columnId={columnId}
+              title={columnTitle}
+              cardIds={cardIds}
+              cardsData={cardsData}
+            />
+          )
+        })}
       </div>
       {createPortal(
         <DragOverlay>
