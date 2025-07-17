@@ -23,26 +23,18 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { UserIcon } from 'lucide-react'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useState } from 'react'
 import { createPortal } from 'react-dom'
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar.tsx'
 
-export type ColumnsData = {
-  id: number
-  title: string
-  cards: {
-    id: number
-    title: string
-    ticketId: string
-    estimate: number
-  }[]
-}[]
+export type Columns = Column[]
+export type Cards = Record<Card['id'], Card>
 
 type Column = {
   id: number
   title: string
-  cards: Map<number, Card>
+  cards: Card['id'][]
 }
 
 type Card = {
@@ -50,28 +42,6 @@ type Card = {
   title: string
   ticketId: string
   estimate: number
-}
-
-type CardsData = Map<Card['id'], Card>
-
-export type ColumnsMapIds = [Column['id'], Card['id'][]][]
-
-export const normalizeColumnsData = (
-  data: ColumnsData,
-): { cardsData: CardsData; columnsMapIds: ColumnsMapIds } => {
-  const cardsData: CardsData = new Map()
-  const columnsMapIds: ColumnsMapIds = []
-
-  for (const column of data) {
-    const cardIds: number[] = []
-    for (const card of column.cards) {
-      cardsData.set(card.id, card)
-      cardIds.push(card.id)
-    }
-    columnsMapIds.push([column.id, cardIds])
-  }
-
-  return { cardsData, columnsMapIds }
 }
 
 const BoardCardContent = ({
@@ -139,35 +109,25 @@ const BoardCard = ({ card }: { card: Card }) => {
   )
 }
 
-const BoardColumn = ({
-  cardIds,
-  cardsData,
-  columnId,
-  title,
-}: {
-  columnId: number
-  title: string
-  cardIds: number[]
-  cardsData: CardsData
-}) => {
-  const { setNodeRef } = useDroppable({ id: columnId })
+const BoardColumn = ({ cards, column }: { column: Column; cards: Cards }) => {
+  const { setNodeRef } = useDroppable({ id: column.id })
 
   return (
     <div
       ref={setNodeRef}
       className="grid w-75 min-w-75 grid-rows-[auto_1fr] gap-2 rounded-xl border bg-gray-50 p-2">
       <div className="flex items-center justify-between p-2">
-        <span className="text-md font-semibold">{title}</span>
+        <span className="text-md font-semibold">{column.title}</span>
         <span className="bg-muted rounded-lg px-2 py-0.5 text-sm font-medium">
-          {cardIds.length}
+          {column.cards.length}
         </span>
       </div>
       <div className="flex flex-col gap-2">
         <SortableContext
-          items={cardIds}
+          items={column.cards}
           strategy={verticalListSortingStrategy}>
-          {cardIds.map((id) => {
-            const card = cardsData.get(id)
+          {column.cards.map((id) => {
+            const card = cards[id]
             return card ? (
               <BoardCard
                 key={id}
@@ -182,236 +142,123 @@ const BoardColumn = ({
 }
 
 export const Board = ({
+  cards,
   columns: initialColumnsData,
   onColumnsChange,
 }: {
-  columns: ColumnsData
-  onColumnsChange: (updated: ColumnsData) => void
+  columns: Columns
+  cards: Cards
+  onColumnsChange: (updated: Columns) => void
 }) => {
   const sensors = useSensors(useSensor(MouseSensor), useSensor(TouchSensor))
 
-  const { cardsData, columnsMapIds: initialMapIds } = useMemo(
-    () => normalizeColumnsData(initialColumnsData),
-    [initialColumnsData],
+  const [columns, setColumns] = useState<Columns>(() =>
+    structuredClone(initialColumnsData),
   )
 
-  const [columnsMapIds, setColumnsMapIds] =
-    useState<ColumnsMapIds>(initialMapIds)
   const [activeCard, setActiveCard] = useState<Card | null>(null)
 
-  useEffect(() => {
-    setColumnsMapIds(initialMapIds)
-  }, [initialMapIds])
-
-  const animationFrameId = useRef<number | null>(null)
-
-  const nextColumnsMapIds = useRef<ColumnsMapIds>(columnsMapIds)
-
-  const findColumn = useCallback(
-    (id: number) => {
-      const column = columnsMapIds.find(([colId]) => colId === id)
-      if (column) return column[0]
-
-      for (const [colId, cardIds] of columnsMapIds) {
-        if (cardIds.includes(id as number)) return colId
-      }
-      return null
-    },
-    [columnsMapIds],
-  )
-
-  const handleDragStart = useCallback(
-    (event: DragStartEvent) => {
-      const { active } = event
-      const card = cardsData.get(active.id as number)
-      if (card) {
-        setActiveCard(card)
-      }
-
-      if (animationFrameId.current) {
-        cancelAnimationFrame(animationFrameId.current)
-        animationFrameId.current = null
-      }
-      nextColumnsMapIds.current = columnsMapIds
-    },
-    [cardsData, columnsMapIds],
-  )
-
-  const handleDragOver = useCallback(
-    (event: DragOverEvent) => {
-      const { active, over } = event
-      if (!over || active.id === over.id) return
-
-      const activeId = active.id as number
-      const overId = over.id as number
-
-      const activeColId = findColumn(activeId)
-      const overColId = findColumn(overId)
-
-      if (!activeColId || !overColId) return
-
-      if (activeColId === overColId) {
-        return
-      }
-
-      if (animationFrameId.current) {
-        cancelAnimationFrame(animationFrameId.current)
-      }
-
-      animationFrameId.current = requestAnimationFrame(() => {
-        setColumnsMapIds((prev) => {
-          const updated: ColumnsMapIds = []
-          let activeCardMoved = false
-
-          for (const [colId, cardIds] of prev) {
-            if (colId === activeColId) {
-              updated.push([colId, cardIds.filter((id) => id !== activeId)])
-            } else if (colId === overColId) {
-              const nextCardIds = [...cardIds]
-              const insertIndex = nextCardIds.includes(overId)
-                ? nextCardIds.indexOf(overId)
-                : nextCardIds.length
-
-              if (!activeCardMoved) {
-                nextCardIds.splice(insertIndex, 0, activeId)
-                activeCardMoved = true
-              }
-              updated.push([colId, nextCardIds])
-            } else {
-              updated.push([colId, cardIds])
-            }
-          }
-          nextColumnsMapIds.current = updated
-          return updated
-        })
-        animationFrameId.current = null
-      })
-    },
-    [findColumn],
-  )
-
-  const handleDragEnd = useCallback(
-    (event: DragEndEvent) => {
-      if (animationFrameId.current) {
-        cancelAnimationFrame(animationFrameId.current)
-        animationFrameId.current = null
-      }
-      setActiveCard(null)
-
-      const { active, over } = event
-      const activeId = active.id as number
-      const overId = over?.id as number
-
-      let finalColumnsMapIds = nextColumnsMapIds.current
-
-      const activeColId = findColumn(activeId)
-      const overColId = findColumn(overId)
-
-      if (activeColId && overColId && activeColId === overColId) {
-        const currentColumnIndex = finalColumnsMapIds.findIndex(
-          ([colId]) => colId === activeColId,
-        )
-        if (currentColumnIndex !== -1) {
-          const currentCardIds = [...finalColumnsMapIds[currentColumnIndex][1]]
-          const oldIndex = currentCardIds.indexOf(activeId)
-          const newIndex = currentCardIds.indexOf(overId)
-
-          if (oldIndex !== -1 && newIndex !== -1) {
-            const [removed] = currentCardIds.splice(oldIndex, 1)
-            currentCardIds.splice(newIndex, 0, removed)
-
-            finalColumnsMapIds = finalColumnsMapIds.map(([colId, cardIds]) =>
-              colId === activeColId
-                ? [colId, currentCardIds]
-                : [colId, cardIds],
-            ) as ColumnsMapIds
-          } else if (oldIndex !== -1 && !overId && currentCardIds.length > 0) {
-            const [removed] = currentCardIds.splice(oldIndex, 1)
-            currentCardIds.push(removed)
-            finalColumnsMapIds = finalColumnsMapIds.map(([colId, cardIds]) =>
-              colId === activeColId
-                ? [colId, currentCardIds]
-                : [colId, cardIds],
-            ) as ColumnsMapIds
-          }
-        }
-      }
-
-      const newColumnsData = finalColumnsMapIds.map(([colId, cardIds]) => {
-        const originalColumn = initialColumnsData.find((c) => c.id === colId)
-        return {
-          cards: cardIds.map((id) => cardsData.get(id)!),
-          id: colId,
-          title: originalColumn?.title || `Column ${colId}`,
-        }
-      })
-      onColumnsChange(newColumnsData)
-
-      nextColumnsMapIds.current = newColumnsData.map((col) => [
-        col.id,
-        col.cards.map((c) => c.id),
-      ])
-    },
-    [cardsData, initialColumnsData, onColumnsChange, findColumn],
-  )
-
-  const handleDragCancel = useCallback(() => {
-    if (animationFrameId.current) {
-      cancelAnimationFrame(animationFrameId.current)
-      animationFrameId.current = null
+  const handleDragStart = (event: DragStartEvent) => {
+    const { active } = event
+    const card = cards[active.id as number]
+    if (card) {
+      setActiveCard(card)
     }
+  }
+
+  const handleDragOver = (event: DragOverEvent) => {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+
+    const activeId = active.id as number
+    const overId = over.id as number
+
+    const activeCol = columns.find((col) => col.cards.includes(activeId))
+    const overCol = columns.find(
+      (col) => col.cards.includes(overId) || col.id === overId,
+    )
+
+    if (!activeCol || !overCol || activeCol.id === overCol.id) return
+
+    setColumns((prev) => {
+      return prev.map((col) => {
+        if (col.id === activeCol.id) {
+          return { ...col, cards: col.cards.filter((id) => id !== activeId) }
+        } else if (col.id === overCol.id) {
+          const newCards = [...col.cards]
+          const insertIndex = newCards.includes(overId)
+            ? newCards.indexOf(overId)
+            : newCards.length
+          newCards.splice(insertIndex, 0, activeId)
+          return { ...col, cards: newCards }
+        }
+        return col
+      })
+    })
+  }
+
+  const handleDragEnd = (event: DragEndEvent) => {
     setActiveCard(null)
 
-    const newColumnsData = columnsMapIds.map(([colId, cardIds]) => {
-      const originalColumn = initialColumnsData.find((c) => c.id === colId)
-      return {
-        cards: cardIds.map((id) => cardsData.get(id)!),
-        id: colId,
-        title: originalColumn?.title || `Column ${colId}`,
+    const { active, over } = event
+    const activeId = active.id as number
+    const overId = over?.id as number
+
+    if (!overId || activeId === overId) return
+
+    const sourceCol = columns.find((col) => col.cards.includes(activeId))
+    const targetCol = columns.find((col) => col.cards.includes(overId))
+
+    if (!sourceCol || !targetCol) return
+
+    const updated = columns.map((col) => {
+      if (col.id === sourceCol.id && sourceCol.id === targetCol.id) {
+        const newCards = [...col.cards]
+        const oldIndex = newCards.indexOf(activeId)
+        const newIndex = newCards.indexOf(overId)
+
+        if (oldIndex !== -1 && newIndex !== -1 && oldIndex !== newIndex) {
+          const [moved] = newCards.splice(oldIndex, 1)
+          newCards.splice(newIndex, 0, moved)
+        }
+
+        return { ...col, cards: newCards }
       }
+      return col
     })
-    onColumnsChange(newColumnsData)
-  }, [columnsMapIds, cardsData, initialColumnsData, onColumnsChange])
 
-  const customCollisionDetection: CollisionDetection = useCallback(
-    (args) => {
-      const { droppableContainers } = args
+    setColumns(updated)
+    onColumnsChange(updated)
+  }
 
-      const columnCollisions = closestCenter({
-        ...args,
-        droppableContainers: droppableContainers.filter((container) =>
-          columnsMapIds.some(([colId]) => colId === container.id),
-        ),
-      })
+  const customCollisionDetection: CollisionDetection = (args) => {
+    const { droppableContainers } = args
 
-      if (!columnCollisions.length) {
-        return []
-      }
+    const columnIds = columns.map((col) => col.id)
 
-      const closestColumn = columnCollisions[0]
-      const closestColumnId = closestColumn.id
+    const columnCollisions = closestCenter({
+      ...args,
+      droppableContainers: droppableContainers.filter((container) =>
+        columnIds.includes(container.id as number),
+      ),
+    })
 
-      const cardCollisions = closestCenter({
-        ...args,
-        droppableContainers: droppableContainers.filter((container) => {
-          const cardIdsInClosestColumn = columnsMapIds.find(
-            ([colId]) => colId === closestColumnId,
-          )?.[1]
-          return (
-            cardIdsInClosestColumn &&
-            cardIdsInClosestColumn.includes(container.id as number)
-          )
-        }),
-      })
+    if (!columnCollisions.length) return []
 
-      if (cardCollisions.length > 0) {
-        return cardCollisions
-      }
+    const closestColId = columnCollisions[0].id
 
-      return columnCollisions
-    },
-    [columnsMapIds],
-  )
+    const targetCardIds =
+      columns.find((c) => c.id === closestColId)?.cards ?? []
+
+    const cardCollisions = closestCenter({
+      ...args,
+      droppableContainers: droppableContainers.filter((container) =>
+        targetCardIds.includes(container.id as number),
+      ),
+    })
+
+    return cardCollisions.length > 0 ? cardCollisions : columnCollisions
+  }
 
   return (
     <DndContext
@@ -419,20 +266,14 @@ export const Board = ({
       collisionDetection={customCollisionDetection}
       onDragStart={handleDragStart}
       onDragOver={handleDragOver}
-      onDragEnd={handleDragEnd}
-      onDragCancel={handleDragCancel}>
+      onDragEnd={handleDragEnd}>
       <div className="flex h-full gap-2">
-        {columnsMapIds.map(([columnId, cardIds]) => {
-          const columnTitle =
-            initialColumnsData.find((col) => col.id === columnId)?.title ||
-            `Column ${columnId}`
+        {columns.map((column) => {
           return (
             <BoardColumn
-              key={columnId}
-              columnId={columnId}
-              title={columnTitle}
-              cardIds={cardIds}
-              cardsData={cardsData}
+              key={column.id}
+              column={column}
+              cards={cards}
             />
           )
         })}
