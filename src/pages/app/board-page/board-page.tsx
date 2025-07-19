@@ -3,7 +3,7 @@ import { useState } from 'react'
 import type {
   Cards,
   Columns,
-} from '@/pages/app/board-page/components/board/board.tsx'
+} from '@/pages/app/board-page/components/board/types'
 
 import { Board } from '@/pages/app/board-page/components/board/board.tsx'
 
