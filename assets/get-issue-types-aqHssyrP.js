@@ -1,0 +1,1 @@
+import{m as t,i as u}from"./keys-DBH3cOYW.js";import{fakeFetch as a}from"./fake-fetch-CCgp82F0.js";import{u as o}from"./createLucideIcon-D4P0TxH6.js";const m=async s=>(await a.issueTypes.getAll({project_id:s})).map(t),p=(s,e)=>o({enabled:!!s,queryFn:()=>e(s),queryKey:u.list(s)});export{m as g,p as u};
