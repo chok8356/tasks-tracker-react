@@ -1,0 +1,1 @@
+import{m as e}from"./issue-status-mappers-DXAXtl_p.js";import{fakeFetch as u}from"./fake-fetch-E6Nzn47o.js";import{u as a}from"./useQuery-t5TA2YJ5.js";import{i as o}from"./keys-CrTZXr55.js";const y=async s=>(await u.issueStatuses.getAll({project_id:s})).map(e),p=(s,t)=>a({enabled:!!s,queryFn:()=>t(s),queryKey:o.list(s)});export{y as g,p as u};

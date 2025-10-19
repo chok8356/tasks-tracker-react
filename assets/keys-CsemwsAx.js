@@ -1,1 +1,0 @@
-const t=s=>({category:s.category,id:s.id,name:s.name,order:s.order,projectId:s.project_id}),e={all:["issue-statuses"],list:s=>[...e.lists(),{projectId:s}],lists:()=>[...e.all,"list"]};export{e as i,t as m};

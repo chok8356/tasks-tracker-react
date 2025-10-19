@@ -1,1 +1,0 @@
-import{j as n}from"./index-CFw533Ub.js";function t(){return n.jsx("section",{className:"space-y-4",children:n.jsx("h1",{className:"text-2xl font-semibold tracking-tight",children:"Page not found"})})}const e=async()=>({Component:t});export{e as notFoundLazyLoader};
