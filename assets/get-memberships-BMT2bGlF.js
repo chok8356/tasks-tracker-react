@@ -1,0 +1,1 @@
+import{m as r}from"./membership-mappers-DBoex8LK.js";import{fakeFetch as m}from"./fake-fetch-CGSRQruo.js";import{u as t}from"./createLucideIcon-CirpPsOA.js";import{m as o}from"./keys-BTyhWnwj.js";const n=async e=>(await m.memberships.getAll({project_id:e})).map(r),y=(e,s)=>t({enabled:!!e,queryFn:()=>s(e),queryKey:o.list(e)});export{n as g,y as u};

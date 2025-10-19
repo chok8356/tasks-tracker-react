@@ -1,1 +1,0 @@
-import{j as e}from"./index-BL_mNyZO.js";function d({text:r}){return e.jsx("div",{className:"text-muted-foreground border-muted-foreground rounded-md border p-4 text-center",children:e.jsx("p",{children:r})})}export{d as E};
