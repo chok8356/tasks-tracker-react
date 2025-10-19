@@ -1,0 +1,1 @@
+import{m as t}from"./project-mappers-B2QvX-sl.js";import{fakeFetch as o}from"./fake-fetch-B9WYnDZz.js";import"./use-session-CS7Ftzxm.js";import"./index-BGPJHsr-.js";const a=async()=>(await o.projects.getAll()).map(t);export{a as getProjectsUseCase};
