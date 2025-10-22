@@ -1,1 +1,0 @@
-import{j as e}from"./index-B03sUboa.js";function s({error:r}){return e.jsxs("div",{className:"border-destructive/30 text-destructive rounded-lg border p-4 text-center",children:["Error: ",r.message]})}export{s as E};

@@ -1,0 +1,1 @@
+import{fakeFetch as s}from"./fake-fetch-CI2qEvzs.js";import{u as t}from"./useQuery-BXA5evE4.js";import{m as u}from"./keys-BTyhWnwj.js";const a=async e=>await s.memberships.getCurrentUserRole({project_id:e}),i=(e,r)=>t({enabled:!!e,queryFn:()=>r(e),queryKey:u.currentUserRole(e)});export{a as g,i as u};
