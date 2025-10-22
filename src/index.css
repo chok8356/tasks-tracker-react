@@ -162,3 +162,10 @@
 html, body {
     touch-action: manipulation;
 }
+
+*,
+*::before,
+*::after {
+    transition: none !important;
+    animation: none !important;
+}
