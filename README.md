@@ -46,6 +46,17 @@ The project is built upon the principles of **Clean Architecture** and **Domain-
 *   **ESLint & Prettier**: A comprehensive setup with `@antfu/eslint-config` for maintaining a consistent, high-quality codebase.
 *   **Pre-commit Hooks**: All code is automatically linted, formatted, type-checked, and tested before every commit to ensure repository health.
 
+## Architectural Improvement Ideas
+
+- Introduce ports in `src/app/ports/*` and refactor `src/app/use-cases/*` to depend on ports -> to break `app -> infra` and simplify unit tests.
+- Add adapters in `src/infra/adapters/*` (http, token-storage, router, notifier) -> to isolate infrastructure and avoid direct infra imports in app/UI.
+- Move React Query hooks from `src/app/query-hooks/*` to `src/ui/query-hooks/*` -> so the app layer does not depend on React.
+- Keep `.deps.ts` only where external dependencies are needed and pass callbacks/handlers down instead of a deep `deps` object -> to avoid prop drilling of deps while keeping "dumb UI".
+- Remove direct infra imports from UI (e.g., `src/ui/router/protected-route.tsx`) -> to keep props-based DI consistent.
+- Split `src/shared` into `src/shared/lib` (pure utilities) and `src/ui/shared` (JSX/React-dependent) -> to keep shared truly framework-agnostic.
+- Replace `useSession` usage in infra with a `TokenStoragePort` -> to avoid infra depending on Zustand/localStorage.
+- Split pages into container/view (thin container, dumb view) -> to keep UI testable as dumb components while wiring stays local.
+
 ## Development & Available Scripts
 
 This project uses `pnpm` for dependency management. All commands should be run with it.
