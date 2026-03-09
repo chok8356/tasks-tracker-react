@@ -1,1 +1,0 @@
-import{m as s}from"./user-mappers-BZ-4mPUd.js";import{fakeFetch as t}from"./fake-fetch-BdEg3X78.js";import{u}from"./useQuery-1y7d8Wxf.js";const c=async()=>{const r=await t.auth.getCurrentUser();return s(r)},e={all:["users"],current:()=>[...e.all,"current"]},m=r=>u({queryFn:r,queryKey:e.current()});export{m as a,c as g,e as u};

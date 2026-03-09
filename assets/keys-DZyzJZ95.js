@@ -1,1 +1,0 @@
-const l={all:["issues"],backlog:s=>[...l.lists(),"backlog",{projectId:s}],board:s=>[...l.lists(),"board",{projectId:s}],detail:s=>[...l.details(),s],details:()=>[...l.all,"detail"],list:s=>[...l.lists(),{filters:s}],lists:()=>[...l.all,"list"]};export{l as i};

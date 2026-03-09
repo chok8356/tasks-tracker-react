@@ -1,0 +1,1 @@
+const t=s=>({ok:!0,value:s}),n=s=>({error:s,ok:!1}),e="Infrastructure error. Please try again.",r=(s,a=e)=>"message"in s&&s.message?s.message:a,o=(s,a=e)=>({_t:"infra",message:s instanceof Error?s.message:typeof s=="string"&&s?s:a});export{n as e,r as g,t as o,o as t};

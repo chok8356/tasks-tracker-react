@@ -1,1 +1,0 @@
-const r=e=>({assigneeId:e.assignee_id,description:e.description,estimate:e.estimate,id:e.id,order:e.order,projectId:e.project_id,reporterId:e.reporter_id,statusId:e.status_id,summary:e.summary,typeId:e.type_id});export{r as m};

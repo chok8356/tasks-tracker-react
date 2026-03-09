@@ -1,0 +1,1 @@
+import{j as t}from"./index-C5Odl6ul.js";import{g as s}from"./result-B37ph-fC.js";function n({error:r}){const e=s(r);return t.jsxs("div",{className:"border-destructive/30 text-destructive rounded-lg border p-4 text-center",children:["Error: ",e]})}export{n as E};
