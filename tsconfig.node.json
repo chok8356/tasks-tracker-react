@@ -1,33 +1,21 @@
 {
-  "compilerOptions": {
-    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.node.tsbuildinfo",
-    "target": "ES2023",
-    "lib": ["ES2023"],
-    "module": "ESNext",
-    "skipLibCheck": true,
-    "jsx": "react-jsx",
-    "moduleResolution": "bundler",
-    "allowImportingTsExtensions": true,
-    "verbatimModuleSyntax": true,
-    "moduleDetection": "force",
-    "noEmit": true,
-    "strict": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "erasableSyntaxOnly": true,
-    "noFallthroughCasesInSwitch": true,
-    "noUncheckedSideEffectImports": true,
-    "types": [
-      "vite/client",
-      "vitest/globals",
-      "@vitest/browser/matchers",
-      "@vitest/browser/providers/playwright"
-    ]
-  },
+  "extends": "@tsconfig/node24/tsconfig.json",
   "include": [
-    "vite.config.ts",
-    "vitest.config.ts",
+    "vite.config.*",
+    "vitest.config.*",
+    "cypress.config.*",
+    "nightwatch.conf.*",
+    "playwright.config.*",
+    "eslint.config.*",
     ".storybook/*.ts",
-    ".storybook/*.tsx",
-  ]
+    ".storybook/*.tsx"
+  ],
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "noEmit": true,
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.node.tsbuildinfo",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "types": ["node"]
+  }
 }

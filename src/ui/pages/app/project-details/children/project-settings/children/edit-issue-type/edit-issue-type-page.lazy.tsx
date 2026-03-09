@@ -1,6 +1,6 @@
-import { getIssueTypesUseCase } from '@/app/use-cases/issue-types/get-issue-types'
-import { updateIssueTypeUseCase } from '@/app/use-cases/issue-types/update-issue-type'
-import { getCurrentUserRoleUseCase } from '@/app/use-cases/memberships/get-current-user-role'
+import { getIssueTypes } from '@/infra/issue-types/get-issue-types'
+import { updateIssueType } from '@/infra/issue-types/update-issue-type'
+import { getCurrentUserRole } from '@/infra/memberships/get-current-user-role'
 import { EditIssueTypePage } from '@/ui/pages/app/project-details/children/project-settings/children/edit-issue-type/edit-issue-type-page.tsx'
 import { ROUTES, useParamsFor } from '@/ui/router/routes'
 
@@ -11,13 +11,13 @@ export const editIssueTypeLazyLoader = async () => {
     )
     return (
       <EditIssueTypePage
+        deps={{
+          getCurrentUserRole,
+          getIssueTypes,
+          updateIssueType,
+        }}
         projectId={projectId}
         typeId={typeId}
-        useCases={{
-          getCurrentUserRoleUseCase,
-          getIssueTypesUseCase,
-          updateIssueTypeUseCase,
-        }}
       />
     )
   }

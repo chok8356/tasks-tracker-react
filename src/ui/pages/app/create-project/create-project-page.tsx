@@ -6,9 +6,9 @@ import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { maxLength, minLength, object, pipe, regex, string } from 'valibot'
 
-import type { CreateProjectUseCase } from '@/domain/use-cases/projects/create-project'
+import type { CreateProject } from '@/features/projects/actions.ts'
 
-import { useCreateProjectMutation } from '@/app/query-hooks/projects/create-project'
+import { useCreateProjectMutation } from '@/ui/query-hooks/projects/create-project'
 import { ROUTES } from '@/ui/router/routes.ts'
 import { Button } from '@/ui/shadcn/components/ui/button.tsx'
 import { Card, CardContent } from '@/ui/shadcn/components/ui/card.tsx'
@@ -40,16 +40,14 @@ const createProjectSchema = object({
 type CreateProjectFormValues = InferOutput<typeof createProjectSchema>
 
 export function CreateProjectPage({
-  useCases,
+  deps,
 }: {
-  useCases: {
-    createProjectUseCase: CreateProjectUseCase
+  deps: {
+    createProject: CreateProject
   }
 }) {
   const navigate = useNavigate()
-  const { isPending, mutate } = useCreateProjectMutation(
-    useCases.createProjectUseCase,
-  )
+  const { isPending, mutate } = useCreateProjectMutation(deps.createProject)
 
   const form = useForm<CreateProjectFormValues>({
     defaultValues: {
@@ -62,11 +60,13 @@ export function CreateProjectPage({
 
   const onSubmit = (values: CreateProjectFormValues) => {
     mutate(values, {
-      onError: (error) => {
-        toast.error('Failed to create project', { description: error.message })
-      },
-      onSuccess: (data) => {
-        toast.success(`Project "${data.name}" has been created.`)
+      onSuccess: (res) => {
+        if (!res.ok) {
+          toast.error('Failed to create project')
+          return
+        }
+
+        toast.success(`Project "${res.value.name}" has been created.`)
         navigate(ROUTES.PROJECTS)
       },
     })

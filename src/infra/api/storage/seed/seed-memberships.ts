@@ -14,50 +14,60 @@ export async function seedMemberships(
 ): Promise<ProjectMembershipDTO[]> {
   const db = await dbPromise
   const now = new Date().toISOString()
+  const [firstProject, secondProject] = projects
+  const [firstUser, secondUser, thirdUser] = users
+
+  if (!firstProject || !secondProject) {
+    throw new Error('Expected at least two projects to seed memberships')
+  }
+
+  if (!firstUser || !secondUser || !thirdUser) {
+    throw new Error('Expected at least three users to seed memberships')
+  }
 
   const memberships: ProjectMembershipDTO[] = [
     {
       id: nanoid(),
       joined_at: now,
-      project_id: projects[0].id,
+      project_id: firstProject.id,
       role: 'admin',
-      user_id: users[0].id,
+      user_id: firstUser.id,
     },
     {
       id: nanoid(),
       joined_at: now,
-      project_id: projects[0].id,
+      project_id: firstProject.id,
       role: 'member',
-      user_id: users[1].id,
+      user_id: secondUser.id,
     },
     {
       id: nanoid(),
       joined_at: now,
-      project_id: projects[0].id,
+      project_id: firstProject.id,
       role: 'member',
-      user_id: users[2].id,
+      user_id: thirdUser.id,
     },
 
     {
       id: nanoid(),
       joined_at: now,
-      project_id: projects[1].id,
+      project_id: secondProject.id,
       role: 'admin',
-      user_id: users[1].id,
+      user_id: secondUser.id,
     },
     {
       id: nanoid(),
       joined_at: now,
-      project_id: projects[1].id,
+      project_id: secondProject.id,
       role: 'member',
-      user_id: users[0].id,
+      user_id: firstUser.id,
     },
     {
       id: nanoid(),
       joined_at: now,
-      project_id: projects[1].id,
+      project_id: secondProject.id,
       role: 'member',
-      user_id: users[2].id,
+      user_id: thirdUser.id,
     },
   ]
 

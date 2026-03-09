@@ -1,12 +1,12 @@
-import { getIssueStatusesUseCase } from '@/app/use-cases/issue-statuses/get-issue-statuses'
-import { getIssueTypesUseCase } from '@/app/use-cases/issue-types/get-issue-types'
-import { bulkUpdateIssuesUseCase } from '@/app/use-cases/issues/bulk-update-issues'
-import { deleteIssueUseCase } from '@/app/use-cases/issues/delete-issue'
-import { getBacklogIssuesUseCase } from '@/app/use-cases/issues/get-backlog-issues'
-import { getBoardIssuesUseCase } from '@/app/use-cases/issues/get-board-issues'
-import { moveToBacklogUseCase } from '@/app/use-cases/issues/move-to-backlog'
-import { moveToBoardUseCase } from '@/app/use-cases/issues/move-to-board'
-import { getMembershipsUseCase } from '@/app/use-cases/memberships/get-memberships'
+import { getIssueStatuses } from '@/infra/issue-statuses/get-issue-statuses'
+import { getIssueTypes } from '@/infra/issue-types/get-issue-types'
+import { bulkUpdateIssues } from '@/infra/issues/bulk-update-issues'
+import { deleteIssue } from '@/infra/issues/delete-issue'
+import { getBacklogIssues } from '@/infra/issues/get-backlog-issues'
+import { getBoardIssues } from '@/infra/issues/get-board-issues'
+import { moveToBacklog } from '@/infra/issues/move-to-backlog'
+import { moveToBoard } from '@/infra/issues/move-to-board'
+import { getMemberships } from '@/infra/memberships/get-memberships'
 import { ProjectBacklogPage } from '@/ui/pages/app/project-details/children/project-backlog/project-backlog-page'
 import { ROUTES, useParamsFor } from '@/ui/router/routes'
 
@@ -17,15 +17,15 @@ export const projectBacklogLazyLoader = async () => {
       <ProjectBacklogPage
         projectId={projectId}
         useCases={{
-          bulkUpdateIssuesUseCase,
-          deleteIssueUseCase,
-          getBacklogIssuesUseCase,
-          getBoardIssuesUseCase,
-          getIssueStatusesUseCase,
-          getIssueTypesUseCase,
-          getMembershipsUseCase,
-          moveToBacklogUseCase,
-          moveToBoardUseCase,
+          bulkUpdateIssues,
+          deleteIssue,
+          getBacklogIssues,
+          getBoardIssues,
+          getIssueStatuses,
+          getIssueTypes,
+          getMemberships,
+          moveToBacklog,
+          moveToBoard,
         }}
       />
     )

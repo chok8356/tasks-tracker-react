@@ -32,7 +32,6 @@ const ToggleGroup = ({
     className={cn('flex items-center justify-center gap-1', className)}
     ref={ref}
     {...props}>
-    {/* eslint-disable-next-line react/no-unstable-context-value */}
     <ToggleGroupContext.Provider value={{ size, variant }}>
       {children}
     </ToggleGroupContext.Provider>

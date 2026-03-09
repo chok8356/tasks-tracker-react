@@ -4,9 +4,10 @@ import { LayoutList, SquareTerminal } from 'lucide-react'
 import * as React from 'react'
 import { Link } from 'react-router-dom'
 
-import type { GetCurrentUserUseCase } from '@/domain/use-cases/users/get-current-user'
+import type { GetCurrentUser } from '@/features/users/actions.ts'
 
-import { useUserQuery } from '@/app/query-hooks/users/get-current-user'
+import { getInfraErrorMessage } from '@/shared/result.ts'
+import { useUserQuery } from '@/ui/query-hooks/users/get-current-user'
 import { ROUTES } from '@/ui/router/routes'
 import { NavMain } from '@/ui/shadcn/components/nav-main'
 import { NavUser } from '@/ui/shadcn/components/nav-user'
@@ -23,22 +24,23 @@ import {
 import { Skeleton } from '@/ui/shadcn/components/ui/skeleton'
 import { cn } from '@/ui/shadcn/lib/utils'
 
+type AppSidebarDeps = {
+  getCurrentUser: GetCurrentUser
+}
+
 type AppSidebarProps = React.ComponentProps<typeof Sidebar> & {
-  useCases: AppSidebarUseCases
+  deps: AppSidebarDeps
 }
 
-type AppSidebarUseCases = {
-  getCurrentUserUseCase: GetCurrentUserUseCase
-}
-
-export function AppSidebar({ useCases, ...props }: AppSidebarProps) {
+export function AppSidebar({ deps, ...props }: AppSidebarProps) {
   const { state } = useSidebar()
   const isCollapsed = state === 'collapsed'
-  const {
-    data: user,
-    error: userError,
-    isLoading: isUserLoading,
-  } = useUserQuery(useCases.getCurrentUserUseCase)
+  const { data: userResult, isLoading: isUserLoading } = useUserQuery(
+    deps.getCurrentUser,
+  )
+
+  const user = userResult?.ok ? userResult.value : null
+  const userError = userResult && !userResult.ok ? userResult.error : null
 
   const navMain = [
     {
@@ -89,7 +91,7 @@ export function AppSidebar({ useCases, ...props }: AppSidebarProps) {
           <div className="p-4">
             <div className="border-destructive/30 rounded-lg border p-4">
               <p className="text-destructive">
-                Error loading user: {userError.message}
+                Error loading user: {getInfraErrorMessage(userError)}
               </p>
             </div>
           </div>

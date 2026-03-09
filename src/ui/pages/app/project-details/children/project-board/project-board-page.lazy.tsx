@@ -1,8 +1,8 @@
-import { getIssueStatusesUseCase } from '@/app/use-cases/issue-statuses/get-issue-statuses'
-import { getIssueTypesUseCase } from '@/app/use-cases/issue-types/get-issue-types'
-import { bulkUpdateIssuesUseCase } from '@/app/use-cases/issues/bulk-update-issues'
-import { getBoardIssuesUseCase } from '@/app/use-cases/issues/get-board-issues'
-import { getMembershipsUseCase } from '@/app/use-cases/memberships/get-memberships'
+import { getIssueStatuses } from '@/infra/issue-statuses/get-issue-statuses'
+import { getIssueTypes } from '@/infra/issue-types/get-issue-types'
+import { bulkUpdateIssues } from '@/infra/issues/bulk-update-issues'
+import { getBoardIssues } from '@/infra/issues/get-board-issues'
+import { getMemberships } from '@/infra/memberships/get-memberships'
 import { ProjectBoardPage } from '@/ui/pages/app/project-details/children/project-board/project-board-page.tsx'
 import { ROUTES, useParamsFor } from '@/ui/router/routes'
 
@@ -13,11 +13,11 @@ export const projectBoardLazyLoader = async () => {
       <ProjectBoardPage
         projectId={projectId}
         useCases={{
-          bulkUpdateIssuesUseCase,
-          getBoardIssuesUseCase,
-          getIssueStatusesUseCase,
-          getIssueTypesUseCase,
-          getMembershipsUseCase,
+          bulkUpdateIssues,
+          getBoardIssues,
+          getIssueStatuses,
+          getIssueTypes,
+          getMemberships,
         }}
       />
     )

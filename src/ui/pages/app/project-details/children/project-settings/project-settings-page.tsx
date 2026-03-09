@@ -8,11 +8,11 @@ import {
 import { toast } from 'sonner'
 
 import type { Project } from '@/domain/types.ts'
-import type { GetCurrentUserRoleUseCase } from '@/domain/use-cases/memberships/get-current-user-role.ts'
-import type { DeleteProjectUseCase } from '@/domain/use-cases/projects/delete-project.ts'
+import type { GetCurrentUserRole } from '@/features/memberships/actions.ts'
+import type { DeleteProject } from '@/features/projects/actions.ts'
 
-import { useCurrentUserRoleQuery } from '@/app/query-hooks/memberships/get-current-user-role.ts'
-import { useDeleteProjectMutation } from '@/app/query-hooks/projects/delete-project.ts'
+import { useCurrentUserRoleQuery } from '@/ui/query-hooks/memberships/get-current-user-role.ts'
+import { useDeleteProjectMutation } from '@/ui/query-hooks/projects/delete-project.ts'
 import { ROUTES } from '@/ui/router/routes.ts'
 import {
   AlertDialog,
@@ -28,24 +28,27 @@ import { Button } from '@/ui/shadcn/components/ui/button.tsx'
 import { Tabs, TabsList, TabsTrigger } from '@/ui/shadcn/components/ui/tabs.tsx'
 
 export function ProjectSettingsPage({
+  deps,
   projectId,
-  useCases,
 }: {
-  projectId: Project['id']
-  useCases: {
-    deleteProjectUseCase: DeleteProjectUseCase
-    getCurrentUserRoleUseCase: GetCurrentUserRoleUseCase
+  deps: {
+    deleteProject: DeleteProject
+    getCurrentUserRole: GetCurrentUserRole
   }
+  projectId: Project['id']
 }) {
   const navigate = useNavigate()
-  const { data: currentUserRole } = useCurrentUserRoleQuery(
+  const { data: currentUserRoleResult } = useCurrentUserRoleQuery(
     projectId,
-    useCases.getCurrentUserRoleUseCase,
+    deps.getCurrentUserRole,
   )
-  const { isPending: isDeleting, mutate: deleteProject } =
-    useDeleteProjectMutation(useCases.deleteProjectUseCase)
+  const { isPending: isDeleting, mutate: deleteProjectMutation } =
+    useDeleteProjectMutation(deps.deleteProject)
   const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false)
 
+  const currentUserRole = currentUserRoleResult?.ok
+    ? currentUserRoleResult.value
+    : null
   const canManage = currentUserRole === 'admin'
 
   function handleDelete() {
@@ -53,11 +56,13 @@ export function ProjectSettingsPage({
   }
 
   function confirmDelete() {
-    deleteProject(projectId, {
-      onError: (err) => {
-        toast.error(`Failed to delete project: ${err.message}`)
-      },
-      onSuccess: () => {
+    deleteProjectMutation(projectId, {
+      onSuccess: (res) => {
+        if (!res.ok) {
+          toast.error('Failed to delete project')
+          return
+        }
+
         setIsDeleteAlertOpen(false)
         toast.success('Project deleted successfully')
         navigate(ROUTES.PROJECTS)
@@ -103,6 +108,7 @@ export function ProjectSettingsPage({
   } as const
 
   const TAB_ORDER: (keyof typeof PATHS)[] = ['types', 'statuses', 'members']
+  const DEFAULT_TAB: keyof typeof PATHS = 'types'
 
   type Tab = keyof typeof PATHS
 
@@ -118,7 +124,7 @@ export function ProjectSettingsPage({
           pathname.includes(n) ||
           pathname.includes(edit)
         )
-      }) ?? TAB_ORDER[0]
+      }) ?? DEFAULT_TAB
     )
   }
 

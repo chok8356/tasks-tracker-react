@@ -6,12 +6,15 @@ import { toast } from 'sonner'
 import * as v from 'valibot'
 
 import type { Project } from '@/domain/types.ts'
-import type { GetCurrentUserRoleUseCase } from '@/domain/use-cases/memberships/get-current-user-role'
-import type { InviteMemberUseCase } from '@/domain/use-cases/memberships/invite-member'
+import type {
+  GetCurrentUserRole,
+  InviteMember,
+} from '@/features/memberships/actions.ts'
 
-import { useCurrentUserRoleQuery } from '@/app/query-hooks/memberships/get-current-user-role'
-import { useInviteMemberMutation } from '@/app/query-hooks/memberships/invite-member'
+import { getInfraErrorMessage } from '@/shared/result.ts'
 import { LoadingState } from '@/ui/components/loading-state'
+import { useCurrentUserRoleQuery } from '@/ui/query-hooks/memberships/get-current-user-role'
+import { useInviteMemberMutation } from '@/ui/query-hooks/memberships/invite-member'
 import { ROUTES } from '@/ui/router/routes.ts'
 import { Button } from '@/ui/shadcn/components/ui/button.tsx'
 import { Card, CardContent } from '@/ui/shadcn/components/ui/card.tsx'
@@ -36,25 +39,27 @@ const createMemberSchema = v.object({
 type CreateMemberFormValues = v.InferInput<typeof createMemberSchema>
 
 export function CreateProjectMemberPage({
+  deps,
   projectId,
-  useCases,
 }: {
-  projectId: Project['id']
-  useCases: {
-    getCurrentUserRoleUseCase: GetCurrentUserRoleUseCase
-    inviteMemberUseCase: InviteMemberUseCase
+  deps: {
+    getCurrentUserRole: GetCurrentUserRole
+    inviteMember: InviteMember
   }
+  projectId: Project['id']
 }) {
   const navigate = useNavigate()
-  const {
-    data: currentUserRole,
-    error,
-    isLoading,
-  } = useCurrentUserRoleQuery(projectId, useCases.getCurrentUserRoleUseCase)
+  const { data: currentUserRoleResult, isLoading } = useCurrentUserRoleQuery(
+    projectId,
+    deps.getCurrentUserRole,
+  )
   const { isPending: isAdding, mutate: inviteMember } = useInviteMemberMutation(
     projectId,
-    useCases.inviteMemberUseCase,
+    deps.inviteMember,
   )
+  const currentUserRole = currentUserRoleResult?.ok
+    ? currentUserRoleResult.value
+    : null
 
   const form = useForm<CreateMemberFormValues>({
     defaultValues: {
@@ -75,10 +80,13 @@ export function CreateProjectMemberPage({
         role: 'member',
       },
       {
-        onError: (err) => {
-          form.setError('root', { message: err.message })
-        },
-        onSuccess: () => {
+        onSuccess: (res) => {
+          if (!res.ok) {
+            form.setError('root', {
+              message: getInfraErrorMessage(res.error),
+            })
+            return
+          }
           toast.success('Member added successfully')
           goBack()
         },
@@ -93,8 +101,8 @@ export function CreateProjectMemberPage({
       <CardContent className="pt-6">
         {isLoading ? (
           <LoadingState />
-        ) : !canCreate || error ? (
-          <ErrorPermissionState error={error} />
+        ) : !canCreate ? (
+          <ErrorPermissionState error={null} />
         ) : (
           <Form {...form}>
             <form

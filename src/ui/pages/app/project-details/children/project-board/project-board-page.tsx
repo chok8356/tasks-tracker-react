@@ -5,20 +5,23 @@ import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 
 import type { Issue, IssueType, Project } from '@/domain/types.ts'
-import type { GetIssueStatusesUseCase } from '@/domain/use-cases/issue-statuses/get-issue-statuses'
-import type { GetIssueTypesUseCase } from '@/domain/use-cases/issue-types/get-issue-types'
-import type { BulkUpdateIssuesUseCase } from '@/domain/use-cases/issues/bulk-update-issues'
-import type { GetBoardIssuesUseCase } from '@/domain/use-cases/issues/get-board-issues'
-import type { GetMembershipsUseCase } from '@/domain/use-cases/memberships/get-memberships'
+import type { GetIssueStatuses } from '@/features/issue-statuses/actions.ts'
+import type { GetIssueTypes } from '@/features/issue-types/actions.ts'
+import type {
+  BulkUpdateIssues,
+  GetBoardIssues,
+} from '@/features/issues/actions.ts'
+import type { GetMemberships } from '@/features/memberships/actions.ts'
+import type { InfraError } from '@/shared/result.ts'
 
-import { useIssueStatusesQuery } from '@/app/query-hooks/issue-statuses/get-issue-statuses'
-import { useIssueTypesQuery } from '@/app/query-hooks/issue-types/get-issue-types'
-import { useBulkUpdateIssuesMutation } from '@/app/query-hooks/issues/bulk-update-issues'
-import { useBoardIssuesQuery } from '@/app/query-hooks/issues/get-board-issues'
-import { useMembershipsQuery } from '@/app/query-hooks/memberships/get-memberships'
 import { EmptyState } from '@/ui/components/empty-state'
 import { ErrorState } from '@/ui/components/error-state'
 import { LoadingState } from '@/ui/components/loading-state'
+import { useIssueStatusesQuery } from '@/ui/query-hooks/issue-statuses/get-issue-statuses'
+import { useIssueTypesQuery } from '@/ui/query-hooks/issue-types/get-issue-types'
+import { useBulkUpdateIssuesMutation } from '@/ui/query-hooks/issues/bulk-update-issues'
+import { useBoardIssuesQuery } from '@/ui/query-hooks/issues/get-board-issues'
+import { useMembershipsQuery } from '@/ui/query-hooks/memberships/get-memberships'
 import { Button } from '@/ui/shadcn/components/ui/button'
 import { Input } from '@/ui/shadcn/components/ui/input'
 import { MultiSelect } from '@/ui/shadcn/components/ui/multi-select'
@@ -28,39 +31,40 @@ import { BoardIssues } from './children/board-issues'
 const useProjectBoardData = (
   projectId: Project['id'],
   useCases: {
-    getBoardIssuesUseCase: GetBoardIssuesUseCase
-    getIssueStatusesUseCase: GetIssueStatusesUseCase
-    getIssueTypesUseCase: GetIssueTypesUseCase
-    getMembershipsUseCase: GetMembershipsUseCase
+    getBoardIssues: GetBoardIssues
+    getIssueStatuses: GetIssueStatuses
+    getIssueTypes: GetIssueTypes
+    getMemberships: GetMemberships
   },
 ) => {
-  const {
-    data: issuesData,
-    error: issuesError,
-    isLoading: issuesLoading,
-  } = useBoardIssuesQuery(projectId, useCases.getBoardIssuesUseCase!)
-  const {
-    data: statusesData,
-    error: statusesError,
-    isLoading: statusesLoading,
-  } = useIssueStatusesQuery(projectId, useCases.getIssueStatusesUseCase!)
-  const {
-    data: typesData,
-    error: typesError,
-    isLoading: typesLoading,
-  } = useIssueTypesQuery(projectId, useCases.getIssueTypesUseCase!)
-  const {
-    data: membersData,
-    error: membersError,
-    isLoading: membersLoading,
-  } = useMembershipsQuery(projectId, useCases.getMembershipsUseCase!)
+  const { data: issuesResult, isLoading: issuesLoading } = useBoardIssuesQuery(
+    projectId,
+    useCases.getBoardIssues,
+  )
+  const { data: statusesResult, isLoading: statusesLoading } =
+    useIssueStatusesQuery(projectId, useCases.getIssueStatuses)
+  const { data: typesResult, isLoading: typesLoading } = useIssueTypesQuery(
+    projectId,
+    useCases.getIssueTypes,
+  )
+  const { data: membersResult, isLoading: membersLoading } =
+    useMembershipsQuery(projectId, useCases.getMemberships)
 
   const isLoading =
     issuesLoading || statusesLoading || typesLoading || membersLoading
-  const error = issuesError || statusesError || typesError || membersError
+  const error: InfraError | null =
+    issuesResult && !issuesResult.ok
+      ? issuesResult.error
+      : statusesResult && !statusesResult.ok
+        ? statusesResult.error
+        : typesResult && !typesResult.ok
+          ? typesResult.error
+          : membersResult && !membersResult.ok
+            ? membersResult.error
+            : null
 
   const issues = useMemo(() => {
-    if (!issuesData) return undefined
+    const issuesData = issuesResult?.ok ? issuesResult.value : []
     return issuesData.reduce(
       (acc, issue) => {
         acc[issue.id] = { ...issue, order: issue.order }
@@ -68,10 +72,10 @@ const useProjectBoardData = (
       },
       {} as Record<string, Issue>,
     )
-  }, [issuesData])
+  }, [issuesResult])
 
   const types = useMemo(() => {
-    if (!typesData) return undefined
+    const typesData = typesResult?.ok ? typesResult.value : []
     return typesData.reduce(
       (acc, type) => {
         acc[type.id] = type
@@ -79,14 +83,14 @@ const useProjectBoardData = (
       },
       {} as Record<string, IssueType>,
     )
-  }, [typesData])
+  }, [typesResult])
 
   return {
     error,
     isLoading,
     issues,
-    members: membersData,
-    statuses: statusesData,
+    members: membersResult?.ok ? membersResult.value : [],
+    statuses: statusesResult?.ok ? statusesResult.value : [],
     types,
   }
 }
@@ -97,11 +101,11 @@ export function ProjectBoardPage({
 }: {
   projectId: Project['id']
   useCases: {
-    bulkUpdateIssuesUseCase: BulkUpdateIssuesUseCase
-    getBoardIssuesUseCase: GetBoardIssuesUseCase
-    getIssueStatusesUseCase: GetIssueStatusesUseCase
-    getIssueTypesUseCase: GetIssueTypesUseCase
-    getMembershipsUseCase: GetMembershipsUseCase
+    bulkUpdateIssues: BulkUpdateIssues
+    getBoardIssues: GetBoardIssues
+    getIssueStatuses: GetIssueStatuses
+    getIssueTypes: GetIssueTypes
+    getMemberships: GetMemberships
   }
 }) {
   const { error, isLoading, issues, members, statuses, types } =
@@ -112,7 +116,7 @@ export function ProjectBoardPage({
 
   const { mutate: bulkUpdate } = useBulkUpdateIssuesMutation(
     projectId,
-    useCases.bulkUpdateIssuesUseCase,
+    useCases.bulkUpdateIssues,
   )
 
   const [searchQuery, setSearchQuery] = useState('')
@@ -170,6 +174,7 @@ export function ProjectBoardPage({
     Object.keys(newIssues).forEach((issueId) => {
       const oldIssue = oldIssues[issueId]
       const newIssue = newIssues[issueId]
+      if (!newIssue) return
       if (
         !oldIssue ||
         oldIssue.statusId !== newIssue.statusId ||
@@ -187,9 +192,11 @@ export function ProjectBoardPage({
       bulkUpdate(
         { projectId, updates },
         {
-          onError: (err) => {
-            toast.error(`Failed to update issues: ${err.message}`)
-            setLocalIssues(oldIssues)
+          onSuccess: (res) => {
+            if (!res.ok) {
+              toast.error('Failed to update issues')
+              setLocalIssues(oldIssues)
+            }
           },
         },
       )
@@ -272,11 +279,11 @@ export function ProjectBoardPage({
         {localIssues && Object.keys(filteredIssues).length > 0 ? (
           <BoardIssues
             issues={filteredIssues}
-            members={members ?? []}
+            members={members}
             onIssuesChange={handleIssuesChange}
             projectId={projectId}
-            statuses={statuses ?? []}
-            types={types ?? {}}
+            statuses={statuses}
+            types={types}
           />
         ) : (
           <EmptyState

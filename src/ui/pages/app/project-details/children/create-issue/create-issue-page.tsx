@@ -6,14 +6,16 @@ import { toast } from 'sonner'
 import * as v from 'valibot'
 
 import type { Project } from '@/domain/types.ts'
-import type { GetIssueTypesUseCase } from '@/domain/use-cases/issue-types/get-issue-types'
-import type { CreateIssueUseCase } from '@/domain/use-cases/issues/create-issue'
-import type { GetCurrentUserRoleUseCase } from '@/domain/use-cases/memberships/get-current-user-role'
+import type { GetIssueTypes } from '@/features/issue-types/actions.ts'
+import type { CreateIssue } from '@/features/issues/actions.ts'
+import type { GetCurrentUserRole } from '@/features/memberships/actions.ts'
 
-import { useIssueTypesQuery } from '@/app/query-hooks/issue-types/get-issue-types'
-import { useCreateIssueMutation } from '@/app/query-hooks/issues/create-issue'
-import { useCurrentUserRoleQuery } from '@/app/query-hooks/memberships/get-current-user-role'
+import { getInfraErrorMessage } from '@/shared/result.ts'
+import { ErrorState } from '@/ui/components/error-state'
 import { LoadingState } from '@/ui/components/loading-state'
+import { useIssueTypesQuery } from '@/ui/query-hooks/issue-types/get-issue-types'
+import { useCreateIssueMutation } from '@/ui/query-hooks/issues/create-issue'
+import { useCurrentUserRoleQuery } from '@/ui/query-hooks/memberships/get-current-user-role'
 import { ROUTES } from '@/ui/router/routes'
 import { Button } from '@/ui/shadcn/components/ui/button'
 import {
@@ -56,23 +58,32 @@ export function CreateIssuePage({
 }: {
   projectId: Project['id']
   useCases: {
-    createIssueUseCase: CreateIssueUseCase
-    getCurrentUserRoleUseCase: GetCurrentUserRoleUseCase
-    getIssueTypesUseCase: GetIssueTypesUseCase
+    createIssue: CreateIssue
+    getCurrentUserRole: GetCurrentUserRole
+    getIssueTypes: GetIssueTypes
   }
 }) {
   const navigate = useNavigate()
 
-  const { data: issueTypes, isLoading: isLoadingTypes } = useIssueTypesQuery(
-    projectId,
-    useCases.getIssueTypesUseCase,
-  )
-  const { data: currentUserRole, isLoading: isLoadingRole } =
-    useCurrentUserRoleQuery(projectId, useCases.getCurrentUserRoleUseCase)
+  const { data: issueTypesResult, isLoading: isLoadingTypes } =
+    useIssueTypesQuery(projectId, useCases.getIssueTypes)
+  const { data: currentUserRoleResult, isLoading: isLoadingRole } =
+    useCurrentUserRoleQuery(projectId, useCases.getCurrentUserRole)
   const { isPending: isCreating, mutate: createIssue } = useCreateIssueMutation(
     projectId,
-    useCases.createIssueUseCase,
+    useCases.createIssue,
   )
+
+  const issueTypes = issueTypesResult?.ok ? issueTypesResult.value : []
+  const currentUserRole = currentUserRoleResult?.ok
+    ? currentUserRoleResult.value
+    : null
+  const error =
+    issueTypesResult && !issueTypesResult.ok
+      ? issueTypesResult.error
+      : currentUserRoleResult && !currentUserRoleResult.ok
+        ? currentUserRoleResult.error
+        : null
 
   const form = useForm<CreateIssueFormValues>({
     defaultValues: {
@@ -91,14 +102,18 @@ export function CreateIssuePage({
         projectId,
       },
       {
-        onError: (error) => {
-          form.setError('root', { message: error.message })
-        },
-        onSuccess: (newIssue) => {
-          toast.success(`Issue "${newIssue.id}" has been created.`)
+        onSuccess: (res) => {
+          if (!res.ok) {
+            form.setError('root', {
+              message: getInfraErrorMessage(res.error),
+            })
+            return
+          }
+
+          toast.success(`Issue "${res.value.id}" has been created.`)
           navigate(
             generatePath(ROUTES.PROJECT_ISSUES_ISSUE, {
-              issueId: newIssue.id,
+              issueId: res.value.id,
               projectId,
             }),
           )
@@ -122,6 +137,8 @@ export function CreateIssuePage({
       <CardContent>
         {isLoading ? (
           <LoadingState />
+        ) : error ? (
+          <ErrorState error={error} />
         ) : !canCreate ? (
           <ErrorPermissionState />
         ) : (
@@ -182,7 +199,7 @@ export function CreateIssuePage({
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {issueTypes?.map((type) => (
+                        {issueTypes.map((type) => (
                           <SelectItem
                             key={type.id}
                             value={type.id}>

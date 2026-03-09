@@ -1,4 +1,4 @@
-export function fakeApiDelay(minMs: number = 100, maxMs: number = 200) {
+export function fakeApiDelay(minMs = 100, maxMs = 200) {
   const ms = Math.floor(Math.random() * (maxMs - minMs + 1)) + minMs
   return new Promise((resolve) => {
     setTimeout(() => resolve(true), ms)

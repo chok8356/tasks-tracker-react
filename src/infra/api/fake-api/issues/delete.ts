@@ -5,7 +5,7 @@ import { checkProjectMembership } from '@/infra/api/fake-api-utils.ts'
 import { dbPromise } from '@/infra/api/storage/db.ts'
 
 export type IssuesDeleteRequest = Pick<IssueDTO, 'id'>
-export type IssuesDeleteResponse = void
+export type IssuesDeleteResponse = undefined
 
 export const deleteIssue = async (
   req: IssuesDeleteRequest,
@@ -22,4 +22,6 @@ export const deleteIssue = async (
   await checkProjectMembership(issue.project_id)
 
   await db.delete('issues', req.id)
+
+  return undefined
 }

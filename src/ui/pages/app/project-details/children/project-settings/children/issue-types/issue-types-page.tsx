@@ -4,17 +4,19 @@ import { generatePath, Link } from 'react-router-dom'
 import { toast } from 'sonner'
 
 import type { IssueType, Project } from '@/domain/types.ts'
-import type { DeleteIssueTypeUseCase } from '@/domain/use-cases/issue-types/delete-issue-type'
-import type { GetIssueTypesUseCase } from '@/domain/use-cases/issue-types/get-issue-types'
-import type { GetCurrentUserRoleUseCase } from '@/domain/use-cases/memberships/get-current-user-role'
+import type {
+  DeleteIssueType,
+  GetIssueTypes,
+} from '@/features/issue-types/actions.ts'
+import type { GetCurrentUserRole } from '@/features/memberships/actions.ts'
 
-import { useDeleteIssueTypeMutation } from '@/app/query-hooks/issue-types/delete-issue-type'
-import { useIssueTypesQuery } from '@/app/query-hooks/issue-types/get-issue-types'
-import { useCurrentUserRoleQuery } from '@/app/query-hooks/memberships/get-current-user-role'
 import { getIssueIcon } from '@/shared/constants/issue-constants.tsx'
 import { EmptyState } from '@/ui/components/empty-state'
 import { ErrorState } from '@/ui/components/error-state'
 import { LoadingState } from '@/ui/components/loading-state'
+import { useDeleteIssueTypeMutation } from '@/ui/query-hooks/issue-types/delete-issue-type'
+import { useIssueTypesQuery } from '@/ui/query-hooks/issue-types/get-issue-types'
+import { useCurrentUserRoleQuery } from '@/ui/query-hooks/memberships/get-current-user-role'
 import { ROUTES } from '@/ui/router/routes.ts'
 import {
   AlertDialog,
@@ -36,43 +38,47 @@ import {
 } from '@/ui/shadcn/components/ui/card.tsx'
 
 export function IssueTypesPage({
+  deps,
   projectId,
-  useCases,
 }: {
-  projectId: Project['id']
-  useCases: {
-    deleteIssueTypeUseCase: DeleteIssueTypeUseCase
-    getCurrentUserRoleUseCase: GetCurrentUserRoleUseCase
-    getIssueTypesUseCase: GetIssueTypesUseCase
+  deps: {
+    deleteIssueType: DeleteIssueType
+    getCurrentUserRole: GetCurrentUserRole
+    getIssueTypes: GetIssueTypes
   }
+  projectId: Project['id']
 }) {
-  const {
-    data: issueTypes,
-    error: typesError,
-    isLoading: typesLoading,
-  } = useIssueTypesQuery(projectId, useCases.getIssueTypesUseCase)
-  const {
-    data: currentUserRole,
-    error: roleError,
-    isLoading: roleLoading,
-  } = useCurrentUserRoleQuery(projectId, useCases.getCurrentUserRoleUseCase)
+  const { data: issueTypesResult, isLoading: typesLoading } =
+    useIssueTypesQuery(projectId, deps.getIssueTypes)
+  const { data: currentUserRoleResult, isLoading: roleLoading } =
+    useCurrentUserRoleQuery(projectId, deps.getCurrentUserRole)
   const { isPending: isDeleting, mutate: deleteType } =
-    useDeleteIssueTypeMutation(projectId, useCases.deleteIssueTypeUseCase)
+    useDeleteIssueTypeMutation(projectId, deps.deleteIssueType)
 
+  const issueTypes = issueTypesResult?.ok ? issueTypesResult.value : []
+  const currentUserRole = currentUserRoleResult?.ok
+    ? currentUserRoleResult.value
+    : null
+  const error =
+    issueTypesResult && !issueTypesResult.ok
+      ? issueTypesResult.error
+      : currentUserRoleResult && !currentUserRoleResult.ok
+        ? currentUserRoleResult.error
+        : null
   const [typeToDelete, setTypeToDelete] = useState<IssueType | null>(null)
 
   const isLoading = typesLoading || roleLoading
-  const error = typesError || roleError
 
   const canManage = currentUserRole === 'admin'
 
   const confirmDeleteType = () => {
     if (!typeToDelete) return
     deleteType(typeToDelete.id, {
-      onError: (err) => {
-        toast.error(`Failed to delete type: ${err.message}`)
-      },
-      onSuccess: () => {
+      onSuccess: (res) => {
+        if (!res.ok) {
+          toast.error('Failed to delete type')
+          return
+        }
         toast.success('Issue type deleted successfully.')
         setTypeToDelete(null)
       },
@@ -109,7 +115,7 @@ export function IssueTypesPage({
               <LoadingState />
             ) : error ? (
               <ErrorState error={error} />
-            ) : issueTypes && issueTypes.length > 0 ? (
+            ) : issueTypes.length > 0 ? (
               <TypesList
                 canManage={canManage}
                 issueTypes={issueTypes}

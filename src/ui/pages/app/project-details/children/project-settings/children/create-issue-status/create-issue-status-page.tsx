@@ -6,16 +6,17 @@ import { toast } from 'sonner'
 import * as v from 'valibot'
 
 import type { Project } from '@/domain/types.ts'
-import type { CreateIssueStatusUseCase } from '@/domain/use-cases/issue-statuses/create-issue-status'
-import type { GetCurrentUserRoleUseCase } from '@/domain/use-cases/memberships/get-current-user-role'
+import type { CreateIssueStatus } from '@/features/issue-statuses/actions.ts'
+import type { GetCurrentUserRole } from '@/features/memberships/actions.ts'
 
-import { useCreateIssueStatusMutation } from '@/app/query-hooks/issue-statuses/create-issue-status'
-import { useCurrentUserRoleQuery } from '@/app/query-hooks/memberships/get-current-user-role'
 import {
   ISSUE_STATUS_CATEGORIES,
   ISSUE_STATUS_CATEGORY_TEXTS,
 } from '@/shared/constants/project-constants.tsx'
+import { getInfraErrorMessage } from '@/shared/result.ts'
 import { LoadingState } from '@/ui/components/loading-state'
+import { useCreateIssueStatusMutation } from '@/ui/query-hooks/issue-statuses/create-issue-status'
+import { useCurrentUserRoleQuery } from '@/ui/query-hooks/memberships/get-current-user-role'
 import { ROUTES } from '@/ui/router/routes.ts'
 import { Button } from '@/ui/shadcn/components/ui/button.tsx'
 import { Card, CardContent } from '@/ui/shadcn/components/ui/card.tsx'
@@ -44,23 +45,25 @@ const createStatusSchema = v.object({
 type CreateStatusFormValues = v.InferOutput<typeof createStatusSchema>
 
 export function CreateIssueStatusPage({
+  deps,
   projectId,
-  useCases,
 }: {
-  projectId: Project['id']
-  useCases: {
-    createIssueStatusUseCase: CreateIssueStatusUseCase
-    getCurrentUserRoleUseCase: GetCurrentUserRoleUseCase
+  deps: {
+    createIssueStatus: CreateIssueStatus
+    getCurrentUserRole: GetCurrentUserRole
   }
+  projectId: Project['id']
 }) {
   const navigate = useNavigate()
-  const {
-    data: currentUserRole,
-    error,
-    isLoading,
-  } = useCurrentUserRoleQuery(projectId, useCases.getCurrentUserRoleUseCase)
+  const { data: currentUserRoleResult, isLoading } = useCurrentUserRoleQuery(
+    projectId,
+    deps.getCurrentUserRole,
+  )
   const { isPending: isCreating, mutate: createStatus } =
-    useCreateIssueStatusMutation(useCases.createIssueStatusUseCase)
+    useCreateIssueStatusMutation(deps.createIssueStatus)
+  const currentUserRole = currentUserRoleResult?.ok
+    ? currentUserRoleResult.value
+    : null
 
   const form = useForm<CreateStatusFormValues>({
     defaultValues: {
@@ -83,10 +86,13 @@ export function CreateIssueStatusPage({
         projectId,
       },
       {
-        onError: (err) => {
-          form.setError('root', { message: err.message })
-        },
-        onSuccess: () => {
+        onSuccess: (res) => {
+          if (!res.ok) {
+            form.setError('root', {
+              message: getInfraErrorMessage(res.error),
+            })
+            return
+          }
           toast.success('Status created successfully')
           goBack()
         },
@@ -101,8 +107,8 @@ export function CreateIssueStatusPage({
       <CardContent className="pt-6">
         {isLoading ? (
           <LoadingState />
-        ) : !canCreate || error ? (
-          <ErrorPermissionState error={error} />
+        ) : !canCreate ? (
+          <ErrorPermissionState error={null} />
         ) : (
           <Form {...form}>
             <form

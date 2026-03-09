@@ -5,7 +5,7 @@ import { checkProjectAdmin } from '@/infra/api/fake-api-utils.ts'
 import { dbPromise } from '@/infra/api/storage/db.ts'
 
 export type IssueTypesDeleteRequest = Pick<IssueTypeDTO, 'id'>
-export type IssueTypesDeleteResponse = void
+export type IssueTypesDeleteResponse = undefined
 
 export const deleteType = async (
   req: IssueTypesDeleteRequest,
@@ -53,4 +53,6 @@ export const deleteType = async (
       }
     }
   }
+
+  return undefined
 }

@@ -57,19 +57,20 @@ type ParamNames<S extends string> = S extends `${string}:${infer P}/${infer R}`
 
 type ParamsOf<S extends string> = [ParamNames<S>] extends [never]
   ? object
-  : { [K in ParamNames<S>]: string }
+  : Record<ParamNames<S>, string>
 type RouteKey = keyof typeof ROUTES
 
 type RoutePath = (typeof ROUTES)[RouteKey]
 
 export function useParamsFor<P extends RoutePath>(
-  _pattern: P,
+  pattern: P,
 ): Readonly<ParamsOf<P>> {
+  void pattern
   return useParams() as Readonly<ParamsOf<P>>
 }
 
 declare module 'react-router-dom' {
-  // eslint-disable-next-line ts/consistent-type-definitions
+  // eslint-disable-next-line @typescript-eslint/consistent-type-definitions
   interface Register {
     params: PathParams
   }

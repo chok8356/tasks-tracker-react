@@ -1,6 +1,6 @@
-import { getIssueTypesUseCase } from '@/app/use-cases/issue-types/get-issue-types'
-import { createIssueUseCase } from '@/app/use-cases/issues/create-issue'
-import { getCurrentUserRoleUseCase } from '@/app/use-cases/memberships/get-current-user-role'
+import { getIssueTypes } from '@/infra/issue-types/get-issue-types'
+import { createIssue } from '@/infra/issues/create-issue'
+import { getCurrentUserRole } from '@/infra/memberships/get-current-user-role'
 import { CreateIssuePage } from '@/ui/pages/app/project-details/children/create-issue/create-issue-page.tsx'
 import { ROUTES, useParamsFor } from '@/ui/router/routes'
 
@@ -11,9 +11,9 @@ export const createIssueLazyLoader = async () => {
       <CreateIssuePage
         projectId={projectId}
         useCases={{
-          createIssueUseCase,
-          getCurrentUserRoleUseCase,
-          getIssueTypesUseCase,
+          createIssue,
+          getCurrentUserRole,
+          getIssueTypes,
         }}
       />
     )

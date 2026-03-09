@@ -1,12 +1,12 @@
 import { generatePath, Link } from 'react-router-dom'
 
 import type { Project } from '@/domain/types.ts'
-import type { GetProjectsUseCase } from '@/domain/use-cases/projects/get-projects'
+import type { GetProjects } from '@/features/projects/actions.ts'
 
-import { useProjectsQuery } from '@/app/query-hooks/projects/get-projects'
 import { EmptyState } from '@/ui/components/empty-state'
 import { ErrorState } from '@/ui/components/error-state'
 import { LoadingState } from '@/ui/components/loading-state'
+import { useProjectsQuery } from '@/ui/query-hooks/projects/get-projects'
 import { ROUTES } from '@/ui/router/routes.ts'
 import { Button } from '@/ui/shadcn/components/ui/button.tsx'
 import {
@@ -19,17 +19,17 @@ import {
 } from '@/ui/shadcn/components/ui/table.tsx'
 
 export function ProjectsPage({
-  useCases,
+  deps,
 }: {
-  useCases: {
-    getProjectsUseCase: GetProjectsUseCase
+  deps: {
+    getProjects: GetProjects
   }
 }) {
-  const {
-    data: projects,
-    error,
-    isLoading,
-  } = useProjectsQuery(useCases.getProjectsUseCase)
+  const { data: projectsResult, isLoading } = useProjectsQuery(deps.getProjects)
+
+  const error =
+    projectsResult && !projectsResult.ok ? projectsResult.error : null
+  const projects = projectsResult?.ok ? projectsResult.value : []
 
   return (
     <div className="space-y-4">
@@ -46,10 +46,10 @@ export function ProjectsPage({
         <LoadingState />
       ) : error ? (
         <ErrorState error={error} />
-      ) : projects && projects.length > 0 ? (
+      ) : projects.length > 0 ? (
         <ProjectsTable projects={projects} />
       ) : (
-        <EmptyState text={'No projects have been created yet.'} />
+        <EmptyState text="No projects have been created yet." />
       )}
     </div>
   )

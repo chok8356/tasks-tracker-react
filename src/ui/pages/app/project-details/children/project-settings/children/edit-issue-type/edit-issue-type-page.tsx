@@ -7,20 +7,24 @@ import { toast } from 'sonner'
 import * as v from 'valibot'
 
 import type { IssueType, Project } from '@/domain/types.ts'
-import type { GetIssueTypesUseCase } from '@/domain/use-cases/issue-types/get-issue-types'
-import type { UpdateIssueTypeUseCase } from '@/domain/use-cases/issue-types/update-issue-type'
-import type { GetCurrentUserRoleUseCase } from '@/domain/use-cases/memberships/get-current-user-role'
+import type {
+  GetIssueTypes,
+  UpdateIssueType,
+} from '@/features/issue-types/actions.ts'
+import type { GetCurrentUserRole } from '@/features/memberships/actions.ts'
 
-import { useIssueTypesQuery } from '@/app/query-hooks/issue-types/get-issue-types'
-import { useUpdateIssueTypeMutation } from '@/app/query-hooks/issue-types/update-issue-type'
-import { useCurrentUserRoleQuery } from '@/app/query-hooks/memberships/get-current-user-role'
 import {
   getIssueIcon,
   ISSUE_TYPE_COLORS,
   ISSUE_TYPE_COLORS_BG_CLASSES,
   ISSUE_TYPE_ICONS,
 } from '@/shared/constants/issue-constants.tsx'
+import { getInfraErrorMessage } from '@/shared/result.ts'
+import { ErrorState } from '@/ui/components/error-state'
 import { LoadingState } from '@/ui/components/loading-state'
+import { useIssueTypesQuery } from '@/ui/query-hooks/issue-types/get-issue-types'
+import { useUpdateIssueTypeMutation } from '@/ui/query-hooks/issue-types/update-issue-type'
+import { useCurrentUserRoleQuery } from '@/ui/query-hooks/memberships/get-current-user-role'
 import { ROUTES } from '@/ui/router/routes.ts'
 import { Button } from '@/ui/shadcn/components/ui/button.tsx'
 import { Card, CardContent } from '@/ui/shadcn/components/ui/card.tsx'
@@ -48,39 +52,44 @@ const editTypeSchema = v.object({
 type EditTypeFormValues = v.InferOutput<typeof editTypeSchema>
 
 export function EditIssueTypePage({
+  deps,
   projectId,
   typeId,
-  useCases,
 }: {
+  deps: {
+    getCurrentUserRole: GetCurrentUserRole
+    getIssueTypes: GetIssueTypes
+    updateIssueType: UpdateIssueType
+  }
   projectId: Project['id']
   typeId: IssueType['id']
-  useCases: {
-    getCurrentUserRoleUseCase: GetCurrentUserRoleUseCase
-    getIssueTypesUseCase: GetIssueTypesUseCase
-    updateIssueTypeUseCase: UpdateIssueTypeUseCase
-  }
 }) {
   const navigate = useNavigate()
 
-  const {
-    data: types,
-    error: typesError,
-    isLoading: typesLoading,
-  } = useIssueTypesQuery(projectId, useCases.getIssueTypesUseCase)
-  const {
-    data: currentUserRole,
-    error: roleError,
-    isLoading: roleLoading,
-  } = useCurrentUserRoleQuery(projectId, useCases.getCurrentUserRoleUseCase)
+  const { data: typesResult, isLoading: typesLoading } = useIssueTypesQuery(
+    projectId,
+    deps.getIssueTypes,
+  )
+  const { data: currentUserRoleResult, isLoading: roleLoading } =
+    useCurrentUserRoleQuery(projectId, deps.getCurrentUserRole)
   const { isPending: isSaving, mutate: updateType } =
-    useUpdateIssueTypeMutation(projectId, useCases.updateIssueTypeUseCase)
+    useUpdateIssueTypeMutation(projectId, deps.updateIssueType)
 
+  const types = typesResult?.ok ? typesResult.value : []
+  const currentUserRole = currentUserRoleResult?.ok
+    ? currentUserRoleResult.value
+    : null
+  const error =
+    typesResult && !typesResult.ok
+      ? typesResult.error
+      : currentUserRoleResult && !currentUserRoleResult.ok
+        ? currentUserRoleResult.error
+        : null
   const typeData = useMemo(() => {
     return types?.find((t) => t.id === typeId)
   }, [types, typeId])
 
   const isLoading = typesLoading || roleLoading
-  const error = typesError || roleError
 
   const form = useForm<EditTypeFormValues>({
     defaultValues: {
@@ -110,10 +119,13 @@ export function EditIssueTypePage({
         id: typeId,
       },
       {
-        onError: (err) => {
-          form.setError('root', { message: err.message })
-        },
-        onSuccess: () => {
+        onSuccess: (res) => {
+          if (!res.ok) {
+            form.setError('root', {
+              message: getInfraErrorMessage(res.error),
+            })
+            return
+          }
           toast.success('Issue type updated successfully')
           goBack()
         },
@@ -128,8 +140,12 @@ export function EditIssueTypePage({
       <CardContent className="pt-6">
         {isLoading ? (
           <LoadingState />
-        ) : !canEdit || error || !typeData ? (
-          <ErrorPermissionState error={error || new Error('Type not found.')} />
+        ) : error ? (
+          <ErrorState error={error} />
+        ) : !canEdit || !typeData ? (
+          <ErrorPermissionState
+            error={!typeData ? new Error('Type not found.') : null}
+          />
         ) : (
           <Form {...form}>
             <form

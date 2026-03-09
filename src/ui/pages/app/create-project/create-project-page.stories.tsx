@@ -2,8 +2,9 @@ import type { Meta, StoryObj } from '@storybook/react-vite'
 
 import { expect, fn, userEvent } from 'storybook/test'
 
-import type { CreateProjectUseCase } from '@/domain/use-cases/projects/create-project'
+import type { CreateProject } from '@/features/projects/actions.ts'
 
+import { err, ok, toInfraError } from '@/shared/result.ts'
 import { wait } from '@/shared/wait.ts'
 
 import { CreateProjectPage } from './create-project-page.tsx'
@@ -18,9 +19,9 @@ type Story = StoryObj<typeof CreateProjectPage>
 
 const API_DELAY = 50
 
-const createProjectUseCaseOk = fn<CreateProjectUseCase>(async (input) => {
+const createProjectOk = fn<CreateProject>(async (input) => {
   await wait(API_DELAY)
-  return {
+  return ok({
     createdAt: new Date(),
     description: input.description ?? '',
     id: 'p1',
@@ -28,17 +29,15 @@ const createProjectUseCaseOk = fn<CreateProjectUseCase>(async (input) => {
     name: input.name,
     ownerId: 'user-1',
     updatedAt: new Date(),
-  }
+  })
 })
 
-const createProjectUseCaseErr = fn<CreateProjectUseCase>(async () => {
-  throw new Error('Server error: 500')
-})
+const createProjectErr = fn<CreateProject>(async () => err(toInfraError()))
 
 export const Success: Story = {
   args: {
-    useCases: {
-      createProjectUseCase: createProjectUseCaseOk,
+    deps: {
+      createProject: createProjectOk,
     },
   },
   play: async ({ canvas, step }) => {
@@ -76,8 +75,8 @@ export const Success: Story = {
 
 export const ErrorState: Story = {
   args: {
-    useCases: {
-      createProjectUseCase: createProjectUseCaseErr,
+    deps: {
+      createProject: createProjectErr,
     },
   },
   play: async ({ canvas }) => {
@@ -90,9 +89,6 @@ export const ErrorState: Story = {
 
     await expect(
       canvas.findByText('Failed to create project'),
-    ).resolves.toBeInTheDocument()
-    await expect(
-      canvas.findByText('Server error: 500'),
     ).resolves.toBeInTheDocument()
   },
 }

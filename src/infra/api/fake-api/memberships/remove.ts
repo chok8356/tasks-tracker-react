@@ -5,7 +5,7 @@ import { checkProjectAdmin } from '@/infra/api/fake-api-utils.ts'
 import { dbPromise } from '@/infra/api/storage/db.ts'
 
 export type MembershipsRemoveRequest = Pick<ProjectMembershipDTO, 'user_id'>
-export type MembershipsRemoveResponse = void
+export type MembershipsRemoveResponse = undefined
 
 export const remove = async (
   req: MembershipsRemoveRequest,
@@ -23,4 +23,6 @@ export const remove = async (
   await checkProjectAdmin(targetMembership.project_id)
 
   await db.delete('project_memberships', targetMembership.id)
+
+  return undefined
 }

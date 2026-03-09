@@ -4,16 +4,18 @@ import { generatePath, Link } from 'react-router-dom'
 import { toast } from 'sonner'
 
 import type { Project, ProjectMembership } from '@/domain/types.ts'
-import type { GetCurrentUserRoleUseCase } from '@/domain/use-cases/memberships/get-current-user-role'
-import type { GetMembershipsUseCase } from '@/domain/use-cases/memberships/get-memberships'
-import type { RemoveMemberUseCase } from '@/domain/use-cases/memberships/remove-member'
+import type {
+  GetCurrentUserRole,
+  GetMemberships,
+  RemoveMember,
+} from '@/features/memberships/actions.ts'
 
-import { useCurrentUserRoleQuery } from '@/app/query-hooks/memberships/get-current-user-role'
-import { useMembershipsQuery } from '@/app/query-hooks/memberships/get-memberships'
-import { useRemoveMemberMutation } from '@/app/query-hooks/memberships/remove-member'
 import { EmptyState } from '@/ui/components/empty-state'
 import { ErrorState } from '@/ui/components/error-state'
 import { LoadingState } from '@/ui/components/loading-state'
+import { useCurrentUserRoleQuery } from '@/ui/query-hooks/memberships/get-current-user-role'
+import { useMembershipsQuery } from '@/ui/query-hooks/memberships/get-memberships'
+import { useRemoveMemberMutation } from '@/ui/query-hooks/memberships/remove-member'
 import { ROUTES } from '@/ui/router/routes.ts'
 import {
   AlertDialog,
@@ -35,34 +37,37 @@ import {
 } from '@/ui/shadcn/components/ui/card.tsx'
 
 export function ProjectMembersPage({
+  deps,
   projectId,
-  useCases,
 }: {
-  projectId: Project['id']
-  useCases: {
-    getCurrentUserRoleUseCase: GetCurrentUserRoleUseCase
-    getMembershipsUseCase: GetMembershipsUseCase
-    removeMemberUseCase: RemoveMemberUseCase
+  deps: {
+    getCurrentUserRole: GetCurrentUserRole
+    getMemberships: GetMemberships
+    removeMember: RemoveMember
   }
+  projectId: Project['id']
 }) {
-  const {
-    data: members = [],
-    error: membersError,
-    isLoading: membersLoading,
-  } = useMembershipsQuery(projectId, useCases.getMembershipsUseCase)
-  const {
-    data: currentUserRole,
-    error: roleError,
-    isLoading: roleLoading,
-  } = useCurrentUserRoleQuery(projectId, useCases.getCurrentUserRoleUseCase)
+  const { data: membersResult, isLoading: membersLoading } =
+    useMembershipsQuery(projectId, deps.getMemberships)
+  const { data: currentUserRoleResult, isLoading: roleLoading } =
+    useCurrentUserRoleQuery(projectId, deps.getCurrentUserRole)
   const { isPending: isRemoving, mutate: removeMember } =
-    useRemoveMemberMutation(projectId, useCases.removeMemberUseCase)
+    useRemoveMemberMutation(projectId, deps.removeMember)
 
+  const members = membersResult?.ok ? membersResult.value : []
+  const currentUserRole = currentUserRoleResult?.ok
+    ? currentUserRoleResult.value
+    : null
+  const error =
+    membersResult && !membersResult.ok
+      ? membersResult.error
+      : currentUserRoleResult && !currentUserRoleResult.ok
+        ? currentUserRoleResult.error
+        : null
   const [memberToRemove, setMemberToRemove] =
     useState<null | ProjectMembership>(null)
 
   const isLoading = membersLoading || roleLoading
-  const error = membersError || roleError
 
   const canManage = currentUserRole === 'admin'
 
@@ -71,10 +76,11 @@ export function ProjectMembersPage({
       removeMember(
         { projectId, userId: memberToRemove.id },
         {
-          onError: (err) => {
-            toast.error(`Failed to remove member: ${err.message}`)
-          },
-          onSuccess: () => {
+          onSuccess: (res) => {
+            if (!res.ok) {
+              toast.error('Failed to remove member')
+              return
+            }
             toast.success('Member removed successfully')
             setMemberToRemove(null)
           },
@@ -115,7 +121,7 @@ export function ProjectMembersPage({
               <ErrorState error={error} />
             ) : members.length > 0 ? (
               <MembersList
-                currentUserRole={currentUserRole}
+                currentUserRole={currentUserRole ?? undefined}
                 members={members}
                 onRemoveMember={setMemberToRemove}
               />

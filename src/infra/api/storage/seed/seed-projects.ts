@@ -7,6 +7,11 @@ import { dbPromise } from '@/infra/api/storage/db.ts'
 export async function seedProjects(users: UserDTO[]): Promise<ProjectDTO[]> {
   const db = await dbPromise
   const now = new Date().toISOString()
+  const [firstUser, secondUser] = users
+
+  if (!firstUser || !secondUser) {
+    throw new Error('Expected at least two users to seed projects')
+  }
 
   const projects: ProjectDTO[] = [
     {
@@ -16,7 +21,7 @@ export async function seedProjects(users: UserDTO[]): Promise<ProjectDTO[]> {
       key: 'WEB',
       last_issue_number: 5,
       name: 'Website Redesign',
-      owner_id: users[0].id,
+      owner_id: firstUser.id,
       updated_at: now,
     },
     {
@@ -26,7 +31,7 @@ export async function seedProjects(users: UserDTO[]): Promise<ProjectDTO[]> {
       key: 'MOB',
       last_issue_number: 5,
       name: 'Mobile App Development',
-      owner_id: users[1].id,
+      owner_id: secondUser.id,
       updated_at: now,
     },
   ]

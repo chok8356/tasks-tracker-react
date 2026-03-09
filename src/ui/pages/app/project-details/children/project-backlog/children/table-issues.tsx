@@ -79,6 +79,7 @@ const TableIssueContent = ({
 }) => {
   const type = types[issue.typeId]
   const assignee = issue.assigneeId ? members[issue.assigneeId] : null
+  const status = statuses[issue.statusId]
   return (
     <TableRow
       className={cn('will-change-transform', className)}
@@ -109,10 +110,12 @@ const TableIssueContent = ({
         </Link>
       </TableCell>
       <TableCell className="min-w-32">
-        {getIssueStatus({
-          category: statuses[issue.statusId].category,
-          name: statuses[issue.statusId].name,
-        })}
+        {status
+          ? getIssueStatus({
+              category: status.category,
+              name: status.name,
+            })
+          : issue.statusId}
       </TableCell>
       <TableCell>
         <div className="bg-muted inline-block rounded-md px-2 py-1 text-center text-xs">
@@ -349,24 +352,28 @@ export const TableIssues = ({
           )
           if (activeIssueGlobalIndex === -1) return prev
           const [movedIssue] = allIssues.splice(activeIssueGlobalIndex, 1)
+          if (!movedIssue) return prev
 
           let globalInsertIndex = allIssues.length
 
           if (placeholderIndex < sortedIssues.length) {
-            const overIssueId = sortedIssues[placeholderIndex].id
-            const foundIndex = allIssues.findIndex((c) => c.id === overIssueId)
-            if (foundIndex !== -1) {
-              globalInsertIndex = foundIndex
+            const overIssue = sortedIssues[placeholderIndex]
+            if (overIssue) {
+              const foundIndex = allIssues.findIndex(
+                (c) => c.id === overIssue.id,
+              )
+              if (foundIndex !== -1) {
+                globalInsertIndex = foundIndex
+              }
             }
           }
 
           allIssues.splice(globalInsertIndex, 0, movedIssue)
 
           allIssues.forEach((issue, index) => {
-            newIssues[issue.id] = {
-              ...newIssues[issue.id],
-              order: index,
-            }
+            const existingIssue = newIssues[issue.id]
+            if (!existingIssue) return
+            newIssues[issue.id] = { ...existingIssue, order: index }
           })
           return newIssues
         })

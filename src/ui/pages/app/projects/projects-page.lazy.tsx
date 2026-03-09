@@ -1,13 +1,12 @@
+import { getProjects } from '@/infra/projects/get-projects'
+import { ProjectsPage } from '@/ui/pages/app/projects/projects-page.tsx'
+
 export const projectsLazyLoader = async () => {
-  const [{ ProjectsPage }, { getProjectsUseCase }] = await Promise.all([
-    import('@/ui/pages/app/projects/projects-page.tsx'),
-    import('@/app/use-cases/projects/get-projects'),
-  ])
   return {
     Component: () => (
       <ProjectsPage
-        useCases={{
-          getProjectsUseCase,
+        deps={{
+          getProjects,
         }}
       />
     ),

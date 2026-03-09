@@ -23,19 +23,21 @@ import { generatePath, Link } from 'react-router-dom'
 import { toast } from 'sonner'
 
 import type { IssueStatus, Project } from '@/domain/types.ts'
-import type { BulkUpdateIssueStatusesUseCase } from '@/domain/use-cases/issue-statuses/bulk-update-issue-statuses'
-import type { DeleteIssueStatusUseCase } from '@/domain/use-cases/issue-statuses/delete-issue-status'
-import type { GetIssueStatusesUseCase } from '@/domain/use-cases/issue-statuses/get-issue-statuses'
-import type { GetCurrentUserRoleUseCase } from '@/domain/use-cases/memberships/get-current-user-role'
+import type {
+  BulkUpdateIssueStatuses,
+  DeleteIssueStatus,
+  GetIssueStatuses,
+} from '@/features/issue-statuses/actions.ts'
+import type { GetCurrentUserRole } from '@/features/memberships/actions.ts'
 
-import { useBulkUpdateIssueStatusesMutation } from '@/app/query-hooks/issue-statuses/bulk-update-issue-statuses'
-import { useDeleteIssueStatusMutation } from '@/app/query-hooks/issue-statuses/delete-issue-status'
-import { useIssueStatusesQuery } from '@/app/query-hooks/issue-statuses/get-issue-statuses'
-import { useCurrentUserRoleQuery } from '@/app/query-hooks/memberships/get-current-user-role'
 import { getIssueStatus } from '@/shared/constants/project-constants.tsx'
 import { EmptyState } from '@/ui/components/empty-state'
 import { ErrorState } from '@/ui/components/error-state'
 import { LoadingState } from '@/ui/components/loading-state'
+import { useBulkUpdateIssueStatusesMutation } from '@/ui/query-hooks/issue-statuses/bulk-update-issue-statuses'
+import { useDeleteIssueStatusMutation } from '@/ui/query-hooks/issue-statuses/delete-issue-status'
+import { useIssueStatusesQuery } from '@/ui/query-hooks/issue-statuses/get-issue-statuses'
+import { useCurrentUserRoleQuery } from '@/ui/query-hooks/memberships/get-current-user-role'
 import { ROUTES } from '@/ui/router/routes.ts'
 import {
   AlertDialog,
@@ -57,49 +59,57 @@ import {
 } from '@/ui/shadcn/components/ui/card.tsx'
 import { cn } from '@/ui/shadcn/lib/utils.ts'
 
+type BulkUpdateStatusesMutate = ReturnType<
+  typeof useBulkUpdateIssueStatusesMutation
+>['mutate']
+
 export function IssueStatusesPage({
+  deps,
   projectId,
-  useCases,
 }: {
-  projectId: Project['id']
-  useCases: {
-    bulkUpdateIssueStatusesUseCase: BulkUpdateIssueStatusesUseCase
-    deleteIssueStatusUseCase: DeleteIssueStatusUseCase
-    getCurrentUserRoleUseCase: GetCurrentUserRoleUseCase
-    getIssueStatusesUseCase: GetIssueStatusesUseCase
+  deps: {
+    bulkUpdateIssueStatuses: BulkUpdateIssueStatuses
+    deleteIssueStatus: DeleteIssueStatus
+    getCurrentUserRole: GetCurrentUserRole
+    getIssueStatuses: GetIssueStatuses
   }
+  projectId: Project['id']
 }) {
-  const {
-    data: issueStatuses,
-    error: statusesError,
-    isLoading: statusesLoading,
-  } = useIssueStatusesQuery(projectId, useCases.getIssueStatusesUseCase)
-  const {
-    data: currentUserRole,
-    error: roleError,
-    isLoading: roleLoading,
-  } = useCurrentUserRoleQuery(projectId, useCases.getCurrentUserRoleUseCase)
+  const { data: issueStatusesResult, isLoading: statusesLoading } =
+    useIssueStatusesQuery(projectId, deps.getIssueStatuses)
+  const { data: currentUserRoleResult, isLoading: roleLoading } =
+    useCurrentUserRoleQuery(projectId, deps.getCurrentUserRole)
   const { isPending: isDeleting, mutate: deleteStatus } =
-    useDeleteIssueStatusMutation(projectId, useCases.deleteIssueStatusUseCase)
+    useDeleteIssueStatusMutation(projectId, deps.deleteIssueStatus)
   const { mutate: bulkUpdateStatuses } = useBulkUpdateIssueStatusesMutation(
     projectId,
-    useCases.bulkUpdateIssueStatusesUseCase,
+    deps.bulkUpdateIssueStatuses,
   )
 
+  const issueStatuses = issueStatusesResult?.ok ? issueStatusesResult.value : []
+  const currentUserRole = currentUserRoleResult?.ok
+    ? currentUserRoleResult.value
+    : null
+  const error =
+    issueStatusesResult && !issueStatusesResult.ok
+      ? issueStatusesResult.error
+      : currentUserRoleResult && !currentUserRoleResult.ok
+        ? currentUserRoleResult.error
+        : null
   const [statusToDelete, setStatusToDelete] = useState<IssueStatus | null>(null)
 
   const isLoading = statusesLoading || roleLoading
-  const error = statusesError || roleError
 
   const canManage = currentUserRole === 'admin'
 
   const confirmDeleteStatus = () => {
     if (!statusToDelete) return
     deleteStatus(statusToDelete.id, {
-      onError: (err) => {
-        toast.error(`Failed to delete status: ${err.message}`)
-      },
-      onSuccess: () => {
+      onSuccess: (res) => {
+        if (!res.ok) {
+          toast.error('Failed to delete status')
+          return
+        }
         setStatusToDelete(null)
         toast.success('Status deleted successfully')
       },
@@ -138,7 +148,7 @@ export function IssueStatusesPage({
             <LoadingState />
           ) : error ? (
             <ErrorState error={error} />
-          ) : issueStatuses && issueStatuses.length > 0 ? (
+          ) : issueStatuses.length > 0 ? (
             <StatusesList
               bulkUpdateStatuses={bulkUpdateStatuses}
               canManage={canManage}
@@ -264,13 +274,7 @@ function StatusesList({
   onDeleteIssueStatus,
   projectId,
 }: {
-  bulkUpdateStatuses: (
-    variables: {
-      projectId: string
-      updates: { id: string; name: string; order: number }[]
-    },
-    options?: { onError?: (error: any) => void; onSuccess?: () => void },
-  ) => void
+  bulkUpdateStatuses: BulkUpdateStatusesMutate
   canManage: boolean
   issueStatuses: IssueStatus[]
   onDeleteIssueStatus: (status: IssueStatus) => void
@@ -300,6 +304,9 @@ function StatusesList({
 
       const newStatuses = [...localStatuses]
       const [movedStatus] = newStatuses.splice(oldIndex, 1)
+      if (!movedStatus) {
+        return
+      }
       newStatuses.splice(newIndex, 0, movedStatus)
 
       setLocalStatuses(newStatuses)
@@ -313,11 +320,12 @@ function StatusesList({
       bulkUpdateStatuses(
         { projectId, updates },
         {
-          onError: (err) => {
-            toast.error(`Failed to update status order: ${err.message}`)
-            setLocalStatuses(originalStatuses)
-          },
-          onSuccess: () => {
+          onSuccess: (res) => {
+            if (!res.ok) {
+              toast.error('Failed to update status order')
+              setLocalStatuses(originalStatuses)
+              return
+            }
             toast.success('Status order updated successfully')
           },
         },

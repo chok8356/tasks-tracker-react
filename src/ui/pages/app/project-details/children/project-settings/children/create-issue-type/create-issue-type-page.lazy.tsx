@@ -1,5 +1,5 @@
-import { createIssueTypeUseCase } from '@/app/use-cases/issue-types/create-issue-type'
-import { getCurrentUserRoleUseCase } from '@/app/use-cases/memberships/get-current-user-role'
+import { createIssueType } from '@/infra/issue-types/create-issue-type'
+import { getCurrentUserRole } from '@/infra/memberships/get-current-user-role'
 import { CreateIssueTypePage } from '@/ui/pages/app/project-details/children/project-settings/children/create-issue-type/create-issue-type-page.tsx'
 import { ROUTES, useParamsFor } from '@/ui/router/routes'
 
@@ -10,11 +10,11 @@ export const createIssueTypeLazyLoader = async () => {
     )
     return (
       <CreateIssueTypePage
-        projectId={projectId}
-        useCases={{
-          createIssueTypeUseCase,
-          getCurrentUserRoleUseCase,
+        deps={{
+          createIssueType,
+          getCurrentUserRole,
         }}
+        projectId={projectId}
       />
     )
   }

@@ -9,6 +9,11 @@ export async function seedTypes(
 ): Promise<IssueTypeDTO[]> {
   const db = await dbPromise
   const now = new Date().toISOString()
+  const [firstProject, secondProject] = projects
+
+  if (!firstProject || !secondProject) {
+    throw new Error('Expected at least two projects to seed issue types')
+  }
 
   const projectTypes: IssueTypeDTO[] = [
     {
@@ -18,7 +23,7 @@ export async function seedTypes(
       id: nanoid(),
       name: 'Bug',
       order: 0,
-      project_id: projects[0].id,
+      project_id: firstProject.id,
       updated_at: now,
     },
     {
@@ -28,7 +33,7 @@ export async function seedTypes(
       id: nanoid(),
       name: 'Feature',
       order: 1,
-      project_id: projects[0].id,
+      project_id: firstProject.id,
       updated_at: now,
     },
     {
@@ -38,7 +43,7 @@ export async function seedTypes(
       id: nanoid(),
       name: 'Research',
       order: 2,
-      project_id: projects[0].id,
+      project_id: firstProject.id,
       updated_at: now,
     },
 
@@ -49,7 +54,7 @@ export async function seedTypes(
       id: nanoid(),
       name: 'Bug',
       order: 0,
-      project_id: projects[1].id,
+      project_id: secondProject.id,
       updated_at: now,
     },
     {
@@ -59,7 +64,7 @@ export async function seedTypes(
       id: nanoid(),
       name: 'Feature',
       order: 1,
-      project_id: projects[1].id,
+      project_id: secondProject.id,
       updated_at: now,
     },
     {
@@ -69,7 +74,7 @@ export async function seedTypes(
       id: nanoid(),
       name: 'Epic',
       order: 2,
-      project_id: projects[1].id,
+      project_id: secondProject.id,
       updated_at: now,
     },
   ]

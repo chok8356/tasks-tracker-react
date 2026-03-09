@@ -27,17 +27,34 @@ export async function seedIssues(data: {
     )
     const projectTypes = data.types.filter((t) => t.project_id === project.id)
 
+    if (
+      projectMemberships.length === 0 ||
+      projectStatuses.length === 0 ||
+      projectTypes.length === 0
+    ) {
+      throw new Error(`Project ${project.id} is missing seed dependencies`)
+    }
+
     for (let i = 1; i <= 20; i++) {
-      const reporterMembership =
-        projectMemberships[
-          Math.floor(Math.random() * projectMemberships.length)
-        ]
+      const reporterMembership = pickRandom(
+        projectMemberships,
+        `Project ${project.id} has no memberships`,
+      )
       const assigneeMembership =
         Math.random() > 0.3
-          ? projectMemberships[
-              Math.floor(Math.random() * projectMemberships.length)
-            ]
+          ? pickRandom(
+              projectMemberships,
+              `Project ${project.id} has no assignee memberships`,
+            )
           : null
+      const randomStatus = pickRandom(
+        projectStatuses,
+        `Project ${project.id} has no statuses`,
+      )
+      const randomType = pickRandom(
+        projectTypes,
+        `Project ${project.id} has no issue types`,
+      )
 
       issues.push({
         assignee_id: assigneeMembership ? assigneeMembership.id : null,
@@ -49,12 +66,9 @@ export async function seedIssues(data: {
         order: projectIndex * 20 + i - 1,
         project_id: project.id,
         reporter_id: reporterMembership.id,
-        status_id:
-          projectStatuses[Math.floor(Math.random() * projectStatuses.length)]
-            .id,
+        status_id: randomStatus.id,
         summary: `Summary for issue ${i} in ${project.key}`,
-        type_id:
-          projectTypes[Math.floor(Math.random() * projectTypes.length)].id,
+        type_id: randomType.id,
         updated_at: now,
       })
     }
@@ -65,4 +79,14 @@ export async function seedIssues(data: {
   }
 
   console.info(`Seeded ${issues.length} issues`)
+}
+
+function pickRandom<T>(items: T[], message: string): T {
+  const item = items[Math.floor(Math.random() * items.length)]
+
+  if (!item) {
+    throw new Error(message)
+  }
+
+  return item
 }

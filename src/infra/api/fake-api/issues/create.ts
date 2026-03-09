@@ -39,7 +39,11 @@ export const create = async (
   if (projectStatuses.length === 0) {
     throw new Error('Project has no issue statuses configured.')
   }
-  const defaultStatusId = projectStatuses[0].id
+  const defaultStatus = projectStatuses[0]
+  if (!defaultStatus) {
+    throw new Error('Project has no default issue status configured.')
+  }
+  const defaultStatusId = defaultStatus.id
 
   const issues = await issuesStore.getAll()
   const projectIssues = issues.filter((i) => i.project_id === req.project_id)
@@ -48,8 +52,8 @@ export const create = async (
   const projectKey = project.key
 
   const issueNumbers = projectIssues.map((issue) => {
-    const parts = issue.id.split('-')
-    const num = Number.parseInt(parts[parts.length - 1], 10)
+    const suffix = issue.id.split('-').at(-1)
+    const num = Number.parseInt(suffix ?? '0', 10)
     return Number.isNaN(num) ? 0 : num
   })
   const maxIssueNumberFromIssues = Math.max(0, ...issueNumbers)

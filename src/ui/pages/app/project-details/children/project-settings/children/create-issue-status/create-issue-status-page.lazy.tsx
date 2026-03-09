@@ -1,5 +1,5 @@
-import { createIssueStatusUseCase } from '@/app/use-cases/issue-statuses/create-issue-status'
-import { getCurrentUserRoleUseCase } from '@/app/use-cases/memberships/get-current-user-role'
+import { createIssueStatus } from '@/infra/issue-statuses/create-issue-status'
+import { getCurrentUserRole } from '@/infra/memberships/get-current-user-role'
 import { CreateIssueStatusPage } from '@/ui/pages/app/project-details/children/project-settings/children/create-issue-status/create-issue-status-page.tsx'
 import { ROUTES, useParamsFor } from '@/ui/router/routes'
 
@@ -10,11 +10,11 @@ export const createIssueStatusLazyLoader = async () => {
     )
     return (
       <CreateIssueStatusPage
-        projectId={projectId}
-        useCases={{
-          createIssueStatusUseCase,
-          getCurrentUserRoleUseCase,
+        deps={{
+          createIssueStatus,
+          getCurrentUserRole,
         }}
+        projectId={projectId}
       />
     )
   }

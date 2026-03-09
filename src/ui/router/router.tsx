@@ -16,110 +16,110 @@ export const router = createHashRouter([
           },
           {
             lazy: () =>
-              import(
-                '@/ui/pages/app/create-project/create-project-page.lazy.tsx'
-              ).then((m) => m.createProjectLazyLoader()),
+              import('@/ui/pages/app/create-project/create-project-page.lazy.tsx').then(
+                (m) => m.createProjectLazyLoader(),
+              ),
             path: ROUTES.PROJECTS_CREATE,
           },
           {
             children: [
               {
                 lazy: () =>
-                  import(
-                    '@/ui/pages/app/project-details/children/project-board/project-board-page.lazy.tsx'
-                  ).then((m) => m.projectBoardLazyLoader()),
+                  import('@/ui/pages/app/project-details/children/project-board/project-board-page.lazy.tsx').then(
+                    (m) => m.projectBoardLazyLoader(),
+                  ),
                 path: ROUTES.PROJECT,
               },
               {
                 lazy: () =>
-                  import(
-                    '@/ui/pages/app/project-details/children/create-issue/create-issue-page.lazy.tsx'
-                  ).then((m) => m.createIssueLazyLoader()),
+                  import('@/ui/pages/app/project-details/children/create-issue/create-issue-page.lazy.tsx').then(
+                    (m) => m.createIssueLazyLoader(),
+                  ),
                 path: ROUTES.PROJECT_ISSUES_CREATE,
               },
               {
                 lazy: () =>
-                  import(
-                    '@/ui/pages/app/project-details/children/issue-details/issue-details-page.lazy.tsx'
-                  ).then((m) => m.issueDetailsLazyLoader()),
+                  import('@/ui/pages/app/project-details/children/issue-details/issue-details-page.lazy.tsx').then(
+                    (m) => m.issueDetailsLazyLoader(),
+                  ),
                 path: ROUTES.PROJECT_ISSUES_ISSUE,
               },
               {
                 lazy: () =>
-                  import(
-                    '@/ui/pages/app/project-details/children/project-backlog/project-backlog-page.lazy.tsx'
-                  ).then((m) => m.projectBacklogLazyLoader()),
+                  import('@/ui/pages/app/project-details/children/project-backlog/project-backlog-page.lazy.tsx').then(
+                    (m) => m.projectBacklogLazyLoader(),
+                  ),
                 path: ROUTES.PROJECT_BACKLOG,
               },
               {
                 children: [
                   {
                     lazy: () =>
-                      import(
-                        '@/ui/pages/app/project-details/children/project-settings/children/issue-types/issue-types-page.lazy.tsx'
-                      ).then((m) => m.issueTypesLazyLoader()),
+                      import('@/ui/pages/app/project-details/children/project-settings/children/issue-types/issue-types-page.lazy.tsx').then(
+                        (m) => m.issueTypesLazyLoader(),
+                      ),
                     path: ROUTES.PROJECT_SETTINGS_ISSUE_TYPES,
                   },
                   {
                     lazy: () =>
-                      import(
-                        '@/ui/pages/app/project-details/children/project-settings/children/create-issue-type/create-issue-type-page.lazy.tsx'
-                      ).then((m) => m.createIssueTypeLazyLoader()),
+                      import('@/ui/pages/app/project-details/children/project-settings/children/create-issue-type/create-issue-type-page.lazy.tsx').then(
+                        (m) => m.createIssueTypeLazyLoader(),
+                      ),
                     path: ROUTES.PROJECT_SETTINGS_ISSUE_TYPES_CREATE,
                   },
                   {
                     lazy: () =>
-                      import(
-                        '@/ui/pages/app/project-details/children/project-settings/children/edit-issue-type/edit-issue-type-page.lazy.tsx'
-                      ).then((m) => m.editIssueTypeLazyLoader()),
+                      import('@/ui/pages/app/project-details/children/project-settings/children/edit-issue-type/edit-issue-type-page.lazy.tsx').then(
+                        (m) => m.editIssueTypeLazyLoader(),
+                      ),
                     path: ROUTES.PROJECT_SETTINGS_ISSUE_TYPES_EDIT,
                   },
                   {
                     lazy: () =>
-                      import(
-                        '@/ui/pages/app/project-details/children/project-settings/children/issue-statuses/issue-statuses-page.lazy.tsx'
-                      ).then((m) => m.issueStatusesLazyLoader()),
+                      import('@/ui/pages/app/project-details/children/project-settings/children/issue-statuses/issue-statuses-page.lazy.tsx').then(
+                        (m) => m.issueStatusesLazyLoader(),
+                      ),
                     path: ROUTES.PROJECT_SETTINGS_ISSUE_STATUSES,
                   },
                   {
                     lazy: () =>
-                      import(
-                        '@/ui/pages/app/project-details/children/project-settings/children/create-issue-status/create-issue-status-page.lazy.tsx'
-                      ).then((m) => m.createIssueStatusLazyLoader()),
+                      import('@/ui/pages/app/project-details/children/project-settings/children/create-issue-status/create-issue-status-page.lazy.tsx').then(
+                        (m) => m.createIssueStatusLazyLoader(),
+                      ),
                     path: ROUTES.PROJECT_SETTINGS_ISSUE_STATUSES_CREATE,
                   },
                   {
                     lazy: () =>
-                      import(
-                        '@/ui/pages/app/project-details/children/project-settings/children/edit-issue-status/edit-issue-status-page.lazy.tsx'
-                      ).then((m) => m.editIssueStatusLazyLoader()),
+                      import('@/ui/pages/app/project-details/children/project-settings/children/edit-issue-status/edit-issue-status-page.lazy.tsx').then(
+                        (m) => m.editIssueStatusLazyLoader(),
+                      ),
                     path: ROUTES.PROJECT_SETTINGS_ISSUE_STATUSES_EDIT,
                   },
                   {
                     lazy: () =>
-                      import(
-                        '@/ui/pages/app/project-details/children/project-settings/children/project-members/project-members-page.lazy.tsx'
-                      ).then((m) => m.projectMembersLazyLoader()),
+                      import('@/ui/pages/app/project-details/children/project-settings/children/project-members/project-members-page.lazy.tsx').then(
+                        (m) => m.projectMembersLazyLoader(),
+                      ),
                     path: ROUTES.PROJECT_SETTINGS_MEMBERS,
                   },
                   {
                     lazy: () =>
-                      import(
-                        '@/ui/pages/app/project-details/children/project-settings/children/create-project-member/create-project-member-page.lazy.tsx'
-                      ).then((m) => m.createProjectMemberLazyLoader()),
+                      import('@/ui/pages/app/project-details/children/project-settings/children/create-project-member/create-project-member-page.lazy.tsx').then(
+                        (m) => m.createProjectMemberLazyLoader(),
+                      ),
                     path: ROUTES.PROJECT_SETTINGS_MEMBERS_CREATE,
                   },
                 ],
                 lazy: () =>
-                  import(
-                    '@/ui/pages/app/project-details/children/project-settings/project-settings-page.lazy.tsx'
-                  ).then((m) => m.projectSettingsLazyLoader()),
+                  import('@/ui/pages/app/project-details/children/project-settings/project-settings-page.lazy.tsx').then(
+                    (m) => m.projectSettingsLazyLoader(),
+                  ),
               },
             ],
             lazy: () =>
-              import(
-                '@/ui/pages/app/project-details/project-details-page.lazy.tsx'
-              ).then((m) => m.projectDetailsLazyLoader()),
+              import('@/ui/pages/app/project-details/project-details-page.lazy.tsx').then(
+                (m) => m.projectDetailsLazyLoader(),
+              ),
           },
           {
             lazy: () =>

@@ -52,7 +52,9 @@ function createAuthProxy<T extends object>(target: T): T {
             } catch (error) {
               console.error('Failed to refresh token, logging out.', error)
               session.logout()
-              throw new Error('Session expired. Please log in again.')
+              throw new Error('Session expired. Please log in again.', {
+                cause: error,
+              })
             }
             if (!useSession.getState().token) {
               throw new Error('Session expired. Please log in again.')

@@ -2,8 +2,9 @@ import type { Meta, StoryObj } from '@storybook/react-vite'
 
 import { expect, fn } from 'storybook/test'
 
-import type { GetProjectsUseCase } from '@/domain/use-cases/projects/get-projects'
+import type { GetProjects } from '@/features/projects/actions.ts'
 
+import { err, ok, toInfraError } from '@/shared/result.ts'
 import { wait } from '@/shared/wait.ts'
 
 import { ProjectsPage } from './projects-page.tsx'
@@ -18,9 +19,9 @@ type Story = StoryObj<typeof ProjectsPage>
 
 const API_DELAY = 50
 
-const getProjectsUseCaseOk = fn<GetProjectsUseCase>(async () => {
+const getProjectsOk = fn<GetProjects>(async () => {
   await wait(API_DELAY)
-  return [
+  return ok([
     {
       createdAt: new Date(),
       description: '',
@@ -30,21 +31,19 @@ const getProjectsUseCaseOk = fn<GetProjectsUseCase>(async () => {
       ownerId: 'user-1',
       updatedAt: new Date(),
     },
-  ]
+  ])
 })
 
-const getProjectsUseCaseOkEmpty = fn<GetProjectsUseCase>(async () => {
-  return []
+const getProjectsOkEmpty = fn<GetProjects>(async () => {
+  return ok([])
 })
 
-const getProjectsUseCaseErr = fn<GetProjectsUseCase>(async () => {
-  throw new Error('Server error: 500')
-})
+const getProjectsErr = fn<GetProjects>(async () => err(toInfraError()))
 
 export const Success: Story = {
   args: {
-    useCases: {
-      getProjectsUseCase: getProjectsUseCaseOk,
+    deps: {
+      getProjects: getProjectsOk,
     },
   },
   play: async ({ canvas }) => {
@@ -61,8 +60,8 @@ export const Success: Story = {
 
 export const Empty: Story = {
   args: {
-    useCases: {
-      getProjectsUseCase: getProjectsUseCaseOkEmpty,
+    deps: {
+      getProjects: getProjectsOkEmpty,
     },
   },
   play: async ({ canvas }) => {
@@ -73,12 +72,12 @@ export const Empty: Story = {
 
 export const ErrorState: Story = {
   args: {
-    useCases: {
-      getProjectsUseCase: getProjectsUseCaseErr,
+    deps: {
+      getProjects: getProjectsErr,
     },
   },
   play: async ({ canvas }) => {
-    const text = canvas.findByText(/Server error: 500/i)
+    const text = canvas.findByText(/Infrastructure error\. Please try again\./i)
     await expect(text).resolves.toBeInTheDocument()
   },
 }

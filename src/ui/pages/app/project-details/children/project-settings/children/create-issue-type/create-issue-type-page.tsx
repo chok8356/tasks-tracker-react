@@ -6,18 +6,19 @@ import { toast } from 'sonner'
 import * as v from 'valibot'
 
 import type { Project } from '@/domain/types.ts'
-import type { CreateIssueTypeUseCase } from '@/domain/use-cases/issue-types/create-issue-type'
-import type { GetCurrentUserRoleUseCase } from '@/domain/use-cases/memberships/get-current-user-role'
+import type { CreateIssueType } from '@/features/issue-types/actions.ts'
+import type { GetCurrentUserRole } from '@/features/memberships/actions.ts'
 
-import { useCreateIssueTypeMutation } from '@/app/query-hooks/issue-types/create-issue-type'
-import { useCurrentUserRoleQuery } from '@/app/query-hooks/memberships/get-current-user-role'
 import {
   getIssueIcon,
   ISSUE_TYPE_COLORS,
   ISSUE_TYPE_COLORS_BG_CLASSES,
   ISSUE_TYPE_ICONS,
 } from '@/shared/constants/issue-constants.tsx'
+import { getInfraErrorMessage } from '@/shared/result.ts'
 import { LoadingState } from '@/ui/components/loading-state'
+import { useCreateIssueTypeMutation } from '@/ui/query-hooks/issue-types/create-issue-type'
+import { useCurrentUserRoleQuery } from '@/ui/query-hooks/memberships/get-current-user-role'
 import { ROUTES } from '@/ui/router/routes.ts'
 import { Button } from '@/ui/shadcn/components/ui/button.tsx'
 import { Card, CardContent } from '@/ui/shadcn/components/ui/card.tsx'
@@ -46,23 +47,25 @@ const createTypeSchema = v.object({
 type CreateTypeFormValues = v.InferOutput<typeof createTypeSchema>
 
 export function CreateIssueTypePage({
+  deps,
   projectId,
-  useCases,
 }: {
-  projectId: Project['id']
-  useCases: {
-    createIssueTypeUseCase: CreateIssueTypeUseCase
-    getCurrentUserRoleUseCase: GetCurrentUserRoleUseCase
+  deps: {
+    createIssueType: CreateIssueType
+    getCurrentUserRole: GetCurrentUserRole
   }
+  projectId: Project['id']
 }) {
   const navigate = useNavigate()
-  const {
-    data: currentUserRole,
-    error,
-    isLoading,
-  } = useCurrentUserRoleQuery(projectId, useCases.getCurrentUserRoleUseCase)
+  const { data: currentUserRoleResult, isLoading } = useCurrentUserRoleQuery(
+    projectId,
+    deps.getCurrentUserRole,
+  )
   const { isPending: isCreating, mutate: createType } =
-    useCreateIssueTypeMutation(useCases.createIssueTypeUseCase)
+    useCreateIssueTypeMutation(deps.createIssueType)
+  const currentUserRole = currentUserRoleResult?.ok
+    ? currentUserRoleResult.value
+    : null
 
   const form = useForm<CreateTypeFormValues>({
     defaultValues: {
@@ -84,10 +87,13 @@ export function CreateIssueTypePage({
         projectId,
       },
       {
-        onError: (err) => {
-          form.setError('root', { message: err.message })
-        },
-        onSuccess: () => {
+        onSuccess: (res) => {
+          if (!res.ok) {
+            form.setError('root', {
+              message: getInfraErrorMessage(res.error),
+            })
+            return
+          }
           toast.success('Issue type created successfully')
           goBack()
         },
@@ -102,8 +108,8 @@ export function CreateIssueTypePage({
       <CardContent className="pt-6">
         {isLoading ? (
           <LoadingState />
-        ) : !canCreate || error ? (
-          <ErrorPermissionState error={error} />
+        ) : !canCreate ? (
+          <ErrorPermissionState error={null} />
         ) : (
           <Form {...form}>
             <form

@@ -1,9 +1,9 @@
-import { getIssueStatusesUseCase } from '@/app/use-cases/issue-statuses/get-issue-statuses'
-import { getIssueTypesUseCase } from '@/app/use-cases/issue-types/get-issue-types'
-import { getIssueUseCase } from '@/app/use-cases/issues/get-issue'
-import { updateIssueUseCase } from '@/app/use-cases/issues/update-issue'
-import { getCurrentUserRoleUseCase } from '@/app/use-cases/memberships/get-current-user-role'
-import { getMembershipsUseCase } from '@/app/use-cases/memberships/get-memberships'
+import { getIssueStatuses } from '@/infra/issue-statuses/get-issue-statuses'
+import { getIssueTypes } from '@/infra/issue-types/get-issue-types'
+import { getIssue } from '@/infra/issues/get-issue'
+import { updateIssue } from '@/infra/issues/update-issue'
+import { getCurrentUserRole } from '@/infra/memberships/get-current-user-role'
+import { getMemberships } from '@/infra/memberships/get-memberships'
 import { IssueDetailsPage } from '@/ui/pages/app/project-details/children/issue-details/issue-details-page.tsx'
 import { ROUTES, useParamsFor } from '@/ui/router/routes'
 
@@ -15,12 +15,12 @@ export const issueDetailsLazyLoader = async () => {
         issueId={issueId}
         projectId={projectId}
         useCases={{
-          getCurrentUserRoleUseCase,
-          getIssueStatusesUseCase,
-          getIssueTypesUseCase,
-          getIssueUseCase,
-          getMembershipsUseCase,
-          updateIssueUseCase,
+          getCurrentUserRole,
+          getIssue,
+          getIssueStatuses,
+          getIssueTypes,
+          getMemberships,
+          updateIssue,
         }}
       />
     )

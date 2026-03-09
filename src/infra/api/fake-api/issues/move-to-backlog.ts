@@ -35,9 +35,8 @@ export const moveToBacklog = async (
   const tx = db.transaction('issues', 'readwrite')
   const now = new Date().toISOString()
 
-  for (let i = 0; i < backlogIssues.length; i++) {
-    const issue = backlogIssues[i]
-    issue.order = i + 1
+  for (const [index, issue] of backlogIssues.entries()) {
+    issue.order = index + 1
     issue.updated_at = now
     await tx.store.put(issue)
   }

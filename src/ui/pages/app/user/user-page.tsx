@@ -5,12 +5,12 @@ import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 import * as v from 'valibot'
 
-import type { GetCurrentUserUseCase } from '@/domain/use-cases/users/get-current-user'
-import type { UpdateUserUseCase } from '@/domain/use-cases/users/update-user'
+import type { GetCurrentUser, UpdateUser } from '@/features/users/actions.ts'
 
-import { useUserQuery } from '@/app/query-hooks/users/get-current-user'
-import { useUpdateUserMutation } from '@/app/query-hooks/users/update-user'
+import { getInfraErrorMessage } from '@/shared/result.ts'
 import { LoadingState } from '@/ui/components/loading-state'
+import { useUserQuery } from '@/ui/query-hooks/users/get-current-user'
+import { useUpdateUserMutation } from '@/ui/query-hooks/users/update-user'
 import { Button } from '@/ui/shadcn/components/ui/button'
 import {
   Card,
@@ -37,21 +37,18 @@ const userInfoSchema = v.object({
 type UserInfoFormValues = v.InferOutput<typeof userInfoSchema>
 
 export function UserPage({
-  useCases,
+  deps,
 }: {
-  useCases: {
-    getCurrentUserUseCase: GetCurrentUserUseCase
-    updateUserUseCase: UpdateUserUseCase
+  deps: {
+    getCurrentUser: GetCurrentUser
+    updateUser: UpdateUser
   }
 }) {
-  const {
-    data: user,
-    error,
-    isLoading,
-  } = useUserQuery(useCases.getCurrentUserUseCase)
-  const { isPending: isSaving, mutate } = useUpdateUserMutation(
-    useCases.updateUserUseCase,
-  )
+  const { data: userResult, isLoading } = useUserQuery(deps.getCurrentUser)
+  const { isPending: isSaving, mutate } = useUpdateUserMutation(deps.updateUser)
+
+  const user = userResult?.ok ? userResult.value : null
+  const loadError = userResult && !userResult.ok ? userResult.error.message : ''
 
   const form = useForm<UserInfoFormValues>({
     defaultValues: { email: '', name: '' },
@@ -66,20 +63,24 @@ export function UserPage({
   }, [user, form])
 
   useEffect(() => {
-    if (error) {
-      form.setError('root', { message: error.message })
+    if (loadError) {
+      form.setError('root', { message: loadError })
     }
-  }, [error, form])
+  }, [loadError, form])
 
   const onSubmit = (values: UserInfoFormValues) => {
     mutate(
       { name: values.name },
       {
-        onError: (err) => {
-          form.setError('root', { message: err.message })
-        },
-        onSuccess: (updatedUser) => {
-          form.reset(updatedUser)
+        onSuccess: (res) => {
+          if (!res.ok) {
+            form.setError('root', {
+              message: getInfraErrorMessage(res.error),
+            })
+            return
+          }
+
+          form.reset(res.value)
           toast.success('User info updated successfully')
         },
       },
@@ -167,7 +168,7 @@ export function UserPage({
                   <Button
                     data-testid="btn-reset"
                     disabled={isSaving || !form.formState.isDirty}
-                    onClick={() => form.reset(user)}
+                    onClick={() => form.reset(user ?? undefined)}
                     type="button"
                     variant="outline">
                     Reset

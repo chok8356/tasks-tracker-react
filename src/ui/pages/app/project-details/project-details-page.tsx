@@ -2,28 +2,30 @@ import { Columns3Cog, LayoutListIcon, SettingsIcon } from 'lucide-react'
 import { generatePath, Link, Outlet } from 'react-router-dom'
 
 import type { Project } from '@/domain/types.ts'
-import type { GetProjectUseCase } from '@/domain/use-cases/projects/get-project'
+import type { GetProject } from '@/features/projects/actions.ts'
 
-import { useProjectQuery } from '@/app/query-hooks/projects/get-project'
 import { ErrorState } from '@/ui/components/error-state'
 import { LoadingState } from '@/ui/components/loading-state'
+import { useProjectQuery } from '@/ui/query-hooks/projects/get-project'
 import { ROUTES } from '@/ui/router/routes'
 import { Button } from '@/ui/shadcn/components/ui/button'
 
 export function ProjectDetailsPage({
+  deps,
   projectId,
-  useCases,
 }: {
-  projectId: Project['id']
-  useCases: {
-    getProjectUseCase: GetProjectUseCase
+  deps: {
+    getProject: GetProject
   }
+  projectId: Project['id']
 }) {
-  const {
-    data: project,
-    error,
-    isLoading,
-  } = useProjectQuery(projectId, useCases.getProjectUseCase)
+  const { data: projectResult, isLoading } = useProjectQuery(
+    projectId,
+    deps.getProject,
+  )
+
+  const error = projectResult && !projectResult.ok ? projectResult.error : null
+  const project = projectResult?.ok ? projectResult.value : null
 
   if (isLoading) {
     return <LoadingState />

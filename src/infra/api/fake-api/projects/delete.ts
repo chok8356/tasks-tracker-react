@@ -5,7 +5,7 @@ import { getAuthenticatedUserId } from '@/infra/api/session.ts'
 import { dbPromise } from '@/infra/api/storage/db.ts'
 
 export type ProjectsDeleteRequest = Pick<ProjectDTO, 'id'>
-export type ProjectsDeleteResponse = void
+export type ProjectsDeleteResponse = undefined
 
 export const deleteProject = async (
   req: ProjectsDeleteRequest,
@@ -49,4 +49,6 @@ export const deleteProject = async (
       await db.delete('issues', issue.id)
     }
   }
+
+  return undefined
 }

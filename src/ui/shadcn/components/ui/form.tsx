@@ -33,7 +33,6 @@ const FormField = <
   ...props
 }: ControllerProps<TFieldValues, TName>) => {
   return (
-    // eslint-disable-next-line react/no-unstable-context-value
     <FormFieldContext.Provider value={{ name: props.name }}>
       <Controller {...props} />
     </FormFieldContext.Provider>
@@ -42,7 +41,6 @@ const FormField = <
 
 const useFormField = () => {
   const fieldContext = React.use(FormFieldContext)
-  // eslint-disable-next-line ts/no-use-before-define
   const itemContext = React.use(FormItemContext)
   const { getFieldState } = useFormContext()
   const formState = useFormState({ name: fieldContext.name })
@@ -107,7 +105,6 @@ function FormItem({ className, ...props }: React.ComponentProps<'div'>) {
   const id = React.useId()
 
   return (
-    // eslint-disable-next-line react/no-unstable-context-value
     <FormItemContext.Provider value={{ id }}>
       <div
         className={cn('grid gap-2', className)}

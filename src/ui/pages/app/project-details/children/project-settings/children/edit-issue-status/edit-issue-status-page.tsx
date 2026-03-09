@@ -7,18 +7,22 @@ import { toast } from 'sonner'
 import * as v from 'valibot'
 
 import type { IssueStatus, Project } from '@/domain/types.ts'
-import type { GetIssueStatusesUseCase } from '@/domain/use-cases/issue-statuses/get-issue-statuses'
-import type { UpdateIssueStatusUseCase } from '@/domain/use-cases/issue-statuses/update-issue-status'
-import type { GetCurrentUserRoleUseCase } from '@/domain/use-cases/memberships/get-current-user-role'
+import type {
+  GetIssueStatuses,
+  UpdateIssueStatus,
+} from '@/features/issue-statuses/actions.ts'
+import type { GetCurrentUserRole } from '@/features/memberships/actions.ts'
 
-import { useIssueStatusesQuery } from '@/app/query-hooks/issue-statuses/get-issue-statuses'
-import { useUpdateIssueStatusMutation } from '@/app/query-hooks/issue-statuses/update-issue-status'
-import { useCurrentUserRoleQuery } from '@/app/query-hooks/memberships/get-current-user-role'
 import {
   ISSUE_STATUS_CATEGORIES,
   ISSUE_STATUS_CATEGORY_TEXTS,
 } from '@/shared/constants/project-constants.tsx'
+import { getInfraErrorMessage } from '@/shared/result.ts'
+import { ErrorState } from '@/ui/components/error-state'
 import { LoadingState } from '@/ui/components/loading-state'
+import { useIssueStatusesQuery } from '@/ui/query-hooks/issue-statuses/get-issue-statuses'
+import { useUpdateIssueStatusMutation } from '@/ui/query-hooks/issue-statuses/update-issue-status'
+import { useCurrentUserRoleQuery } from '@/ui/query-hooks/memberships/get-current-user-role'
 import { ROUTES } from '@/ui/router/routes.ts'
 import { Button } from '@/ui/shadcn/components/ui/button.tsx'
 import { Card, CardContent } from '@/ui/shadcn/components/ui/card.tsx'
@@ -47,39 +51,42 @@ const editStatusSchema = v.object({
 type EditStatusFormValues = v.InferOutput<typeof editStatusSchema>
 
 export function EditIssueStatusPage({
+  deps,
   projectId,
   statusId,
-  useCases,
 }: {
+  deps: {
+    getCurrentUserRole: GetCurrentUserRole
+    getIssueStatuses: GetIssueStatuses
+    updateIssueStatus: UpdateIssueStatus
+  }
   projectId: Project['id']
   statusId: IssueStatus['id']
-  useCases: {
-    getCurrentUserRoleUseCase: GetCurrentUserRoleUseCase
-    getIssueStatusesUseCase: GetIssueStatusesUseCase
-    updateIssueStatusUseCase: UpdateIssueStatusUseCase
-  }
 }) {
   const navigate = useNavigate()
 
-  const {
-    data: statuses,
-    error: statusesError,
-    isLoading: statusesLoading,
-  } = useIssueStatusesQuery(projectId, useCases.getIssueStatusesUseCase)
-  const {
-    data: currentUserRole,
-    error: roleError,
-    isLoading: roleLoading,
-  } = useCurrentUserRoleQuery(projectId, useCases.getCurrentUserRoleUseCase)
+  const { data: statusesResult, isLoading: statusesLoading } =
+    useIssueStatusesQuery(projectId, deps.getIssueStatuses)
+  const { data: currentUserRoleResult, isLoading: roleLoading } =
+    useCurrentUserRoleQuery(projectId, deps.getCurrentUserRole)
   const { isPending: isSaving, mutate: updateStatus } =
-    useUpdateIssueStatusMutation(projectId, useCases.updateIssueStatusUseCase)
+    useUpdateIssueStatusMutation(projectId, deps.updateIssueStatus)
 
+  const statuses = statusesResult?.ok ? statusesResult.value : []
+  const currentUserRole = currentUserRoleResult?.ok
+    ? currentUserRoleResult.value
+    : null
+  const error =
+    statusesResult && !statusesResult.ok
+      ? statusesResult.error
+      : currentUserRoleResult && !currentUserRoleResult.ok
+        ? currentUserRoleResult.error
+        : null
   const statusData = useMemo(() => {
     return statuses?.find((s) => s.id === statusId)
   }, [statuses, statusId])
 
   const isLoading = statusesLoading || roleLoading
-  const error = statusesError || roleError
 
   const form = useForm<EditStatusFormValues>({
     defaultValues: {
@@ -111,10 +118,13 @@ export function EditIssueStatusPage({
         order: statusData.order,
       },
       {
-        onError: (err) => {
-          form.setError('root', { message: err.message })
-        },
-        onSuccess: () => {
+        onSuccess: (res) => {
+          if (!res.ok) {
+            form.setError('root', {
+              message: getInfraErrorMessage(res.error),
+            })
+            return
+          }
           toast.success('Status updated successfully')
           goBack()
         },
@@ -129,9 +139,11 @@ export function EditIssueStatusPage({
       <CardContent className="pt-6">
         {isLoading ? (
           <LoadingState />
-        ) : !canEdit || error || !statusData ? (
+        ) : error ? (
+          <ErrorState error={error} />
+        ) : !canEdit || !statusData ? (
           <ErrorPermissionState
-            error={error || new Error('Status not found.')}
+            error={!statusData ? new Error('Status not found.') : null}
           />
         ) : (
           <Form {...form}>

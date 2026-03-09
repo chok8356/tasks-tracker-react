@@ -4,7 +4,7 @@ import { fakeApiDelay } from '@/infra/api/fake-api-delay.ts'
 import { dbPromise } from '@/infra/api/storage/db.ts'
 
 export type UsersDeleteRequest = Pick<UserDTO, 'id'>
-export type UsersDeleteResponse = void
+export type UsersDeleteResponse = undefined
 
 export const deleteUsers = async (
   req: UsersDeleteRequest,
@@ -43,8 +43,8 @@ export const deleteUsers = async (
       const projectMembers = memberships.filter(
         (m) => m.project_id === issue.project_id && m.user_id !== req.id,
       )
-      const newReporter =
-        projectMembers.length > 0 ? projectMembers[0].id : null
+      const fallbackReporter = projectMembers[0]
+      const newReporter = fallbackReporter ? fallbackReporter.id : null
       updatedIssue = { ...updatedIssue, reporter_id: newReporter }
       needsUpdate = true
     }
@@ -59,4 +59,6 @@ export const deleteUsers = async (
   }
 
   await db.delete('users', req.id)
+
+  return undefined
 }

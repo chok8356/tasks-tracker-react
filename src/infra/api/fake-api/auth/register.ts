@@ -28,7 +28,7 @@ export const register = async (
     created_at: new Date().toISOString(),
     email: req.email,
     id: nanoid(),
-    name: req.email.split('@')[0],
+    name: req.email.split('@')[0] ?? req.email,
     updated_at: new Date().toISOString(),
   }
 

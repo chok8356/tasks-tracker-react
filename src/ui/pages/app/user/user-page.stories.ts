@@ -2,9 +2,9 @@ import type { Meta, StoryObj } from '@storybook/react-vite'
 
 import { expect, fn, userEvent, waitFor } from 'storybook/test'
 
-import type { GetCurrentUserUseCase } from '@/domain/use-cases/users/get-current-user.ts'
-import type { UpdateUserUseCase } from '@/domain/use-cases/users/update-user.ts'
+import type { GetCurrentUser, UpdateUser } from '@/features/users/actions.ts'
 
+import { err, ok, toInfraError } from '@/shared/result.ts'
 import { wait } from '@/shared/wait.ts'
 
 import { UserPage } from './user-page.tsx'
@@ -19,39 +19,39 @@ type Story = StoryObj<typeof meta>
 
 const API_DELAY = 50
 
-const getCurrentUserUseCaseOk = fn<GetCurrentUserUseCase>(async () => {
+const getCurrentUserOk = fn<GetCurrentUser>(async () => {
   await wait(API_DELAY)
-  return {
+  return ok({
     email: 'john@example.com',
     id: '1',
     name: 'John',
-  }
+  })
 })
 
-const getCurrentUserUseCaseErr = fn<GetCurrentUserUseCase>(async () => {
+const getCurrentUserErr = fn<GetCurrentUser>(async () => {
   await wait(API_DELAY)
-  throw new Error('Server error: 500')
+  return err(toInfraError())
 })
 
-const updateUserUseCaseOk = fn<UpdateUserUseCase>(async (req) => {
+const updateUserOk = fn<UpdateUser>(async (req) => {
   await wait(API_DELAY)
-  return {
+  return ok({
     email: 'john@example.com',
     id: '1',
     name: req.name ?? 'John Doe',
-  }
+  })
 })
 
-const updateUserUseCaseErr = fn<UpdateUserUseCase>(async () => {
+const updateUserErr = fn<UpdateUser>(async () => {
   await wait(API_DELAY)
-  throw new Error('Failed to update')
+  return err(toInfraError())
 })
 
 export const InitialLoad: Story = {
   args: {
-    useCases: {
-      getCurrentUserUseCase: getCurrentUserUseCaseOk,
-      updateUserUseCase: updateUserUseCaseOk,
+    deps: {
+      getCurrentUser: getCurrentUserOk,
+      updateUser: updateUserOk,
     },
   },
   play: async ({ canvas }) => {
@@ -72,9 +72,9 @@ export const InitialLoad: Story = {
 
 export const InitialLoadError: Story = {
   args: {
-    useCases: {
-      getCurrentUserUseCase: getCurrentUserUseCaseErr,
-      updateUserUseCase: updateUserUseCaseOk,
+    deps: {
+      getCurrentUser: getCurrentUserErr,
+      updateUser: updateUserOk,
     },
   },
   play: async ({ canvas }) => {
@@ -82,7 +82,9 @@ export const InitialLoadError: Story = {
     await expect(loader).toBeInTheDocument()
 
     await waitFor(async () => {
-      const error = await canvas.findByText('Error: Server error: 500')
+      const error = await canvas.findByText(
+        'Error: Infrastructure error. Please try again.',
+      )
       await expect(error).toBeInTheDocument()
     })
   },
@@ -90,9 +92,9 @@ export const InitialLoadError: Story = {
 
 export const UpdateSuccess: Story = {
   args: {
-    useCases: {
-      getCurrentUserUseCase: getCurrentUserUseCaseOk,
-      updateUserUseCase: updateUserUseCaseOk,
+    deps: {
+      getCurrentUser: getCurrentUserOk,
+      updateUser: updateUserOk,
     },
   },
   play: async ({ canvas }) => {
@@ -122,9 +124,9 @@ export const UpdateSuccess: Story = {
 
 export const UpdateError: Story = {
   args: {
-    useCases: {
-      getCurrentUserUseCase: getCurrentUserUseCaseOk,
-      updateUserUseCase: updateUserUseCaseErr,
+    deps: {
+      getCurrentUser: getCurrentUserOk,
+      updateUser: updateUserErr,
     },
   },
   play: async ({ canvas }) => {
@@ -137,7 +139,9 @@ export const UpdateError: Story = {
       await userEvent.click(saveButton)
 
       await expect(
-        await canvas.findByText('Error: Failed to update'),
+        await canvas.findByText(
+          'Error: Infrastructure error. Please try again.',
+        ),
       ).toBeInTheDocument()
     })
   },
@@ -145,9 +149,9 @@ export const UpdateError: Story = {
 
 export const ValidationError: Story = {
   args: {
-    useCases: {
-      getCurrentUserUseCase: getCurrentUserUseCaseOk,
-      updateUserUseCase: updateUserUseCaseOk,
+    deps: {
+      getCurrentUser: getCurrentUserOk,
+      updateUser: updateUserOk,
     },
   },
   play: async ({ canvas }) => {

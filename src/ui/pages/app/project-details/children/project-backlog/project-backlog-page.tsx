@@ -5,28 +5,31 @@ import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 
 import type { Issue, IssueType, Project } from '@/domain/types.ts'
-import type { GetIssueStatusesUseCase } from '@/domain/use-cases/issue-statuses/get-issue-statuses'
-import type { GetIssueTypesUseCase } from '@/domain/use-cases/issue-types/get-issue-types'
-import type { BulkUpdateIssuesUseCase } from '@/domain/use-cases/issues/bulk-update-issues'
-import type { DeleteIssueUseCase } from '@/domain/use-cases/issues/delete-issue'
-import type { GetBacklogIssuesUseCase } from '@/domain/use-cases/issues/get-backlog-issues'
-import type { GetBoardIssuesUseCase } from '@/domain/use-cases/issues/get-board-issues'
-import type { MoveToBacklogUseCase } from '@/domain/use-cases/issues/move-to-backlog'
-import type { MoveToBoardUseCase } from '@/domain/use-cases/issues/move-to-board'
-import type { GetMembershipsUseCase } from '@/domain/use-cases/memberships/get-memberships'
+import type { GetIssueStatuses } from '@/features/issue-statuses/actions.ts'
+import type { GetIssueTypes } from '@/features/issue-types/actions.ts'
+import type {
+  BulkUpdateIssues,
+  DeleteIssue,
+  GetBacklogIssues,
+  GetBoardIssues,
+  MoveToBacklog,
+  MoveToBoard,
+} from '@/features/issues/actions.ts'
+import type { GetMemberships } from '@/features/memberships/actions.ts'
+import type { InfraError } from '@/shared/result.ts'
 
-import { useIssueStatusesQuery } from '@/app/query-hooks/issue-statuses/get-issue-statuses'
-import { useIssueTypesQuery } from '@/app/query-hooks/issue-types/get-issue-types'
-import { useBulkUpdateIssuesMutation } from '@/app/query-hooks/issues/bulk-update-issues'
-import { useDeleteIssueMutation } from '@/app/query-hooks/issues/delete-issue'
-import { useBacklogIssuesQuery } from '@/app/query-hooks/issues/get-backlog-issues'
-import { useBoardIssuesQuery } from '@/app/query-hooks/issues/get-board-issues'
-import { useMoveToBacklogMutation } from '@/app/query-hooks/issues/move-to-backlog'
-import { useMoveToBoardMutation } from '@/app/query-hooks/issues/move-to-board'
-import { useMembershipsQuery } from '@/app/query-hooks/memberships/get-memberships'
 import { EmptyState } from '@/ui/components/empty-state'
 import { ErrorState } from '@/ui/components/error-state'
 import { LoadingState } from '@/ui/components/loading-state'
+import { useIssueStatusesQuery } from '@/ui/query-hooks/issue-statuses/get-issue-statuses'
+import { useIssueTypesQuery } from '@/ui/query-hooks/issue-types/get-issue-types'
+import { useBulkUpdateIssuesMutation } from '@/ui/query-hooks/issues/bulk-update-issues'
+import { useDeleteIssueMutation } from '@/ui/query-hooks/issues/delete-issue'
+import { useBacklogIssuesQuery } from '@/ui/query-hooks/issues/get-backlog-issues'
+import { useBoardIssuesQuery } from '@/ui/query-hooks/issues/get-board-issues'
+import { useMoveToBacklogMutation } from '@/ui/query-hooks/issues/move-to-backlog'
+import { useMoveToBoardMutation } from '@/ui/query-hooks/issues/move-to-board'
+import { useMembershipsQuery } from '@/ui/query-hooks/memberships/get-memberships'
 import { Button } from '@/ui/shadcn/components/ui/button'
 import { Input } from '@/ui/shadcn/components/ui/input'
 import { MultiSelect } from '@/ui/shadcn/components/ui/multi-select'
@@ -36,38 +39,27 @@ import { TableIssues } from './children/table-issues.tsx'
 const useProjectBacklogData = (
   projectId: Project['id'],
   useCases: {
-    getBacklogIssuesUseCase: GetBacklogIssuesUseCase
-    getBoardIssuesUseCase: GetBoardIssuesUseCase
-    getIssueStatusesUseCase: GetIssueStatusesUseCase
-    getIssueTypesUseCase: GetIssueTypesUseCase
-    getMembershipsUseCase: GetMembershipsUseCase
+    getBacklogIssues: GetBacklogIssues
+    getBoardIssues: GetBoardIssues
+    getIssueStatuses: GetIssueStatuses
+    getIssueTypes: GetIssueTypes
+    getMemberships: GetMemberships
   },
 ) => {
-  const {
-    data: backlogData,
-    error: backlogError,
-    isLoading: backlogLoading,
-  } = useBacklogIssuesQuery(projectId, useCases.getBacklogIssuesUseCase!)
-  const {
-    data: boardData,
-    error: boardError,
-    isLoading: boardLoading,
-  } = useBoardIssuesQuery(projectId, useCases.getBoardIssuesUseCase!)
-  const {
-    data: statusesData,
-    error: statusesError,
-    isLoading: statusesLoading,
-  } = useIssueStatusesQuery(projectId, useCases.getIssueStatusesUseCase!)
-  const {
-    data: typesData,
-    error: typesError,
-    isLoading: typesLoading,
-  } = useIssueTypesQuery(projectId, useCases.getIssueTypesUseCase!)
-  const {
-    data: membersData,
-    error: membersError,
-    isLoading: membersLoading,
-  } = useMembershipsQuery(projectId, useCases.getMembershipsUseCase!)
+  const { data: backlogResult, isLoading: backlogLoading } =
+    useBacklogIssuesQuery(projectId, useCases.getBacklogIssues)
+  const { data: boardResult, isLoading: boardLoading } = useBoardIssuesQuery(
+    projectId,
+    useCases.getBoardIssues,
+  )
+  const { data: statusesResult, isLoading: statusesLoading } =
+    useIssueStatusesQuery(projectId, useCases.getIssueStatuses)
+  const { data: typesResult, isLoading: typesLoading } = useIssueTypesQuery(
+    projectId,
+    useCases.getIssueTypes,
+  )
+  const { data: membersResult, isLoading: membersLoading } =
+    useMembershipsQuery(projectId, useCases.getMemberships)
 
   const isLoading =
     backlogLoading ||
@@ -75,11 +67,21 @@ const useProjectBacklogData = (
     statusesLoading ||
     typesLoading ||
     membersLoading
-  const error =
-    backlogError || boardError || statusesError || typesError || membersError
+  const error: InfraError | null =
+    backlogResult && !backlogResult.ok
+      ? backlogResult.error
+      : boardResult && !boardResult.ok
+        ? boardResult.error
+        : statusesResult && !statusesResult.ok
+          ? statusesResult.error
+          : typesResult && !typesResult.ok
+            ? typesResult.error
+            : membersResult && !membersResult.ok
+              ? membersResult.error
+              : null
 
   const issues = useMemo(() => {
-    if (!backlogData) return undefined
+    const backlogData = backlogResult?.ok ? backlogResult.value : []
     return backlogData.reduce(
       (acc, issue) => {
         acc[issue.id] = { ...issue, order: issue.order }
@@ -87,10 +89,10 @@ const useProjectBacklogData = (
       },
       {} as Record<string, Issue>,
     )
-  }, [backlogData])
+  }, [backlogResult])
 
   const boardIssues = useMemo(() => {
-    if (!boardData) return undefined
+    const boardData = boardResult?.ok ? boardResult.value : []
     return boardData.reduce(
       (acc, issue) => {
         acc[issue.id] = { ...issue, order: issue.order }
@@ -98,10 +100,10 @@ const useProjectBacklogData = (
       },
       {} as Record<string, Issue>,
     )
-  }, [boardData])
+  }, [boardResult])
 
   const types = useMemo(() => {
-    if (!typesData) return undefined
+    const typesData = typesResult?.ok ? typesResult.value : []
     return typesData.reduce(
       (acc, type) => {
         acc[type.id] = type
@@ -109,15 +111,15 @@ const useProjectBacklogData = (
       },
       {} as Record<string, IssueType>,
     )
-  }, [typesData])
+  }, [typesResult])
 
   return {
     boardIssues,
     error,
     isLoading,
     issues,
-    members: membersData,
-    statuses: statusesData,
+    members: membersResult?.ok ? membersResult.value : [],
+    statuses: statusesResult?.ok ? statusesResult.value : [],
     types,
   }
 }
@@ -128,15 +130,15 @@ export function ProjectBacklogPage({
 }: {
   projectId: Project['id']
   useCases: {
-    bulkUpdateIssuesUseCase: BulkUpdateIssuesUseCase
-    deleteIssueUseCase: DeleteIssueUseCase
-    getBacklogIssuesUseCase: GetBacklogIssuesUseCase
-    getBoardIssuesUseCase: GetBoardIssuesUseCase
-    getIssueStatusesUseCase: GetIssueStatusesUseCase
-    getIssueTypesUseCase: GetIssueTypesUseCase
-    getMembershipsUseCase: GetMembershipsUseCase
-    moveToBacklogUseCase: MoveToBacklogUseCase
-    moveToBoardUseCase: MoveToBoardUseCase
+    bulkUpdateIssues: BulkUpdateIssues
+    deleteIssue: DeleteIssue
+    getBacklogIssues: GetBacklogIssues
+    getBoardIssues: GetBoardIssues
+    getIssueStatuses: GetIssueStatuses
+    getIssueTypes: GetIssueTypes
+    getMemberships: GetMemberships
+    moveToBacklog: MoveToBacklog
+    moveToBoard: MoveToBoard
   }
 }) {
   const { boardIssues, error, isLoading, issues, members, statuses, types } =
@@ -151,19 +153,19 @@ export function ProjectBacklogPage({
 
   const { mutate: bulkUpdate } = useBulkUpdateIssuesMutation(
     projectId,
-    useCases.bulkUpdateIssuesUseCase,
+    useCases.bulkUpdateIssues,
   )
   const { mutate: deleteIssue } = useDeleteIssueMutation(
     projectId,
-    useCases.deleteIssueUseCase,
+    useCases.deleteIssue,
   )
   const { mutate: moveToBoard } = useMoveToBoardMutation(
     projectId,
-    useCases.moveToBoardUseCase,
+    useCases.moveToBoard,
   )
   const { mutate: moveToBacklog } = useMoveToBacklogMutation(
     projectId,
-    useCases.moveToBacklogUseCase,
+    useCases.moveToBacklog,
   )
 
   const [searchQuery, setSearchQuery] = useState('')
@@ -247,8 +249,13 @@ export function ProjectBacklogPage({
 
   const optimisticDeleteIssue = (issueId: Issue['id']) => {
     deleteIssue(issueId, {
-      onError: (err) => toast.error(`Failed to delete issue: ${err.message}`),
-      onSuccess: () => toast.success('Issue deleted successfully'),
+      onSuccess: (res) => {
+        if (!res.ok) {
+          toast.error('Failed to delete issue')
+          return
+        }
+        toast.success('Issue deleted successfully')
+      },
     })
   }
 
@@ -256,8 +263,11 @@ export function ProjectBacklogPage({
     moveToBoard(
       { issueId, projectId },
       {
-        onError: (err) =>
-          toast.error(`Failed to move issue to board: ${err.message}`),
+        onSuccess: (res) => {
+          if (!res.ok) {
+            toast.error('Failed to move issue to board')
+          }
+        },
       },
     )
   }
@@ -266,8 +276,11 @@ export function ProjectBacklogPage({
     moveToBacklog(
       { issueId, projectId },
       {
-        onError: (err) =>
-          toast.error(`Failed to move issue to backlog: ${err.message}`),
+        onSuccess: (res) => {
+          if (!res.ok) {
+            toast.error('Failed to move issue to backlog')
+          }
+        },
       },
     )
   }
@@ -283,6 +296,7 @@ export function ProjectBacklogPage({
     Object.keys(newIssues).forEach((issueId) => {
       const oldIssue = oldIssues[issueId]
       const newIssue = newIssues[issueId]
+      if (!newIssue) return
       if (
         !oldIssue ||
         oldIssue.statusId !== newIssue.statusId ||
@@ -300,9 +314,11 @@ export function ProjectBacklogPage({
       bulkUpdate(
         { projectId, updates },
         {
-          onError: (err) => {
-            toast.error(`Failed to update backlog issues: ${err.message}`)
-            setLocalIssues(oldIssues)
+          onSuccess: (res) => {
+            if (!res.ok) {
+              toast.error('Failed to update backlog issues')
+              setLocalIssues(oldIssues)
+            }
           },
         },
       )
@@ -321,6 +337,7 @@ export function ProjectBacklogPage({
     Object.keys(newBoardIssues).forEach((issueId) => {
       const oldIssue = oldBoardIssues[issueId]
       const newIssue = newBoardIssues[issueId]
+      if (!newIssue) return
       if (
         !oldIssue ||
         oldIssue.statusId !== newIssue.statusId ||
@@ -338,9 +355,11 @@ export function ProjectBacklogPage({
       bulkUpdate(
         { projectId, updates },
         {
-          onError: (err) => {
-            toast.error(`Failed to update board issues: ${err.message}`)
-            setLocalBoardIssues(oldBoardIssues)
+          onSuccess: (res) => {
+            if (!res.ok) {
+              toast.error('Failed to update board issues')
+              setLocalBoardIssues(oldBoardIssues)
+            }
           },
         },
       )
@@ -450,13 +469,13 @@ export function ProjectBacklogPage({
         {localBoardIssues && Object.keys(filteredBoardIssues).length > 0 ? (
           <TableIssues
             issues={filteredBoardIssues}
-            members={members ?? []}
+            members={members}
             onDeleteIssue={optimisticDeleteIssue}
             onIssuesChange={handleBoardIssuesChange}
             onMoveToBacklog={optimisticMoveIssueToBacklog}
             projectId={projectId}
-            statuses={statuses ?? []}
-            types={types ?? {}}
+            statuses={statuses}
+            types={types}
           />
         ) : (
           <EmptyState
@@ -474,13 +493,13 @@ export function ProjectBacklogPage({
         {localIssues && Object.keys(filteredIssues).length > 0 ? (
           <TableIssues
             issues={filteredIssues}
-            members={members ?? []}
+            members={members}
             onDeleteIssue={optimisticDeleteIssue}
             onIssuesChange={handleIssuesChange}
             onMoveToBoard={optimisticMoveIssueToBoard}
             projectId={projectId}
-            statuses={statuses ?? []}
-            types={types ?? {}}
+            statuses={statuses}
+            types={types}
           />
         ) : (
           <EmptyState

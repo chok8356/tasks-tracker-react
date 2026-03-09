@@ -7,21 +7,24 @@ import { toast } from 'sonner'
 import * as v from 'valibot'
 
 import type { Issue, Project } from '@/domain/types.ts'
-import type { GetIssueStatusesUseCase } from '@/domain/use-cases/issue-statuses/get-issue-statuses'
-import type { GetIssueTypesUseCase } from '@/domain/use-cases/issue-types/get-issue-types'
-import type { GetIssueUseCase } from '@/domain/use-cases/issues/get-issue'
-import type { UpdateIssueUseCase } from '@/domain/use-cases/issues/update-issue'
-import type { GetCurrentUserRoleUseCase } from '@/domain/use-cases/memberships/get-current-user-role'
-import type { GetMembershipsUseCase } from '@/domain/use-cases/memberships/get-memberships'
+import type { GetIssueStatuses } from '@/features/issue-statuses/actions.ts'
+import type { GetIssueTypes } from '@/features/issue-types/actions.ts'
+import type { GetIssue, UpdateIssue } from '@/features/issues/actions.ts'
+import type {
+  GetCurrentUserRole,
+  GetMemberships,
+} from '@/features/memberships/actions.ts'
+import type { InfraError } from '@/shared/result.ts'
 
-import { useIssueStatusesQuery } from '@/app/query-hooks/issue-statuses/get-issue-statuses'
-import { useIssueTypesQuery } from '@/app/query-hooks/issue-types/get-issue-types'
-import { useIssueQuery } from '@/app/query-hooks/issues/get-issue'
-import { useUpdateIssueMutation } from '@/app/query-hooks/issues/update-issue'
-import { useCurrentUserRoleQuery } from '@/app/query-hooks/memberships/get-current-user-role'
-import { useMembershipsQuery } from '@/app/query-hooks/memberships/get-memberships'
+import { getInfraErrorMessage } from '@/shared/result.ts'
 import { ErrorState } from '@/ui/components/error-state'
 import { LoadingState } from '@/ui/components/loading-state'
+import { useIssueStatusesQuery } from '@/ui/query-hooks/issue-statuses/get-issue-statuses'
+import { useIssueTypesQuery } from '@/ui/query-hooks/issue-types/get-issue-types'
+import { useIssueQuery } from '@/ui/query-hooks/issues/get-issue'
+import { useUpdateIssueMutation } from '@/ui/query-hooks/issues/update-issue'
+import { useCurrentUserRoleQuery } from '@/ui/query-hooks/memberships/get-current-user-role'
+import { useMembershipsQuery } from '@/ui/query-hooks/memberships/get-memberships'
 import { ROUTES } from '@/ui/router/routes.ts'
 import { Button } from '@/ui/shadcn/components/ui/button'
 import {
@@ -70,38 +73,27 @@ const useIssueDetailsData = (
   issueId: Issue['id'],
   projectId: Project['id'],
   useCases: {
-    getCurrentUserRoleUseCase: GetCurrentUserRoleUseCase
-    getIssueStatusesUseCase: GetIssueStatusesUseCase
-    getIssueTypesUseCase: GetIssueTypesUseCase
-    getIssueUseCase: GetIssueUseCase
-    getMembershipsUseCase: GetMembershipsUseCase
+    getCurrentUserRole: GetCurrentUserRole
+    getIssue: GetIssue
+    getIssueStatuses: GetIssueStatuses
+    getIssueTypes: GetIssueTypes
+    getMemberships: GetMemberships
   },
 ) => {
-  const {
-    data: issue,
-    error: issueError,
-    isLoading: issueLoading,
-  } = useIssueQuery(issueId, useCases.getIssueUseCase)
-  const {
-    data: statuses,
-    error: statusesError,
-    isLoading: statusesLoading,
-  } = useIssueStatusesQuery(projectId, useCases.getIssueStatusesUseCase)
-  const {
-    data: types,
-    error: typesError,
-    isLoading: typesLoading,
-  } = useIssueTypesQuery(projectId, useCases.getIssueTypesUseCase)
-  const {
-    data: members,
-    error: membersError,
-    isLoading: membersLoading,
-  } = useMembershipsQuery(projectId, useCases.getMembershipsUseCase)
-  const {
-    data: currentUserRole,
-    error: roleError,
-    isLoading: roleLoading,
-  } = useCurrentUserRoleQuery(projectId, useCases.getCurrentUserRoleUseCase)
+  const { data: issueResult, isLoading: issueLoading } = useIssueQuery(
+    issueId,
+    useCases.getIssue,
+  )
+  const { data: statusesResult, isLoading: statusesLoading } =
+    useIssueStatusesQuery(projectId, useCases.getIssueStatuses)
+  const { data: typesResult, isLoading: typesLoading } = useIssueTypesQuery(
+    projectId,
+    useCases.getIssueTypes,
+  )
+  const { data: membersResult, isLoading: membersLoading } =
+    useMembershipsQuery(projectId, useCases.getMemberships)
+  const { data: currentUserRoleResult, isLoading: roleLoading } =
+    useCurrentUserRoleQuery(projectId, useCases.getCurrentUserRole)
 
   const isLoading =
     issueLoading ||
@@ -109,17 +101,29 @@ const useIssueDetailsData = (
     typesLoading ||
     membersLoading ||
     roleLoading
-  const error =
-    issueError || statusesError || typesError || membersError || roleError
+  const error: InfraError | null =
+    issueResult && !issueResult.ok
+      ? issueResult.error
+      : statusesResult && !statusesResult.ok
+        ? statusesResult.error
+        : typesResult && !typesResult.ok
+          ? typesResult.error
+          : membersResult && !membersResult.ok
+            ? membersResult.error
+            : currentUserRoleResult && !currentUserRoleResult.ok
+              ? currentUserRoleResult.error
+              : null
 
   return {
-    currentUserRole,
+    currentUserRole: currentUserRoleResult?.ok
+      ? currentUserRoleResult.value
+      : null,
     error,
     isLoading,
-    issue,
-    members,
-    statuses,
-    types,
+    issue: issueResult?.ok ? issueResult.value : null,
+    members: membersResult?.ok ? membersResult.value : [],
+    statuses: statusesResult?.ok ? statusesResult.value : [],
+    types: typesResult?.ok ? typesResult.value : [],
   }
 }
 
@@ -131,19 +135,19 @@ export function IssueDetailsPage({
   issueId: Issue['id']
   projectId: Project['id']
   useCases: {
-    getCurrentUserRoleUseCase: GetCurrentUserRoleUseCase
-    getIssueStatusesUseCase: GetIssueStatusesUseCase
-    getIssueTypesUseCase: GetIssueTypesUseCase
-    getIssueUseCase: GetIssueUseCase
-    getMembershipsUseCase: GetMembershipsUseCase
-    updateIssueUseCase: UpdateIssueUseCase
+    getCurrentUserRole: GetCurrentUserRole
+    getIssue: GetIssue
+    getIssueStatuses: GetIssueStatuses
+    getIssueTypes: GetIssueTypes
+    getMemberships: GetMemberships
+    updateIssue: UpdateIssue
   }
 }) {
   const { currentUserRole, error, isLoading, issue, members, statuses, types } =
     useIssueDetailsData(issueId, projectId, useCases)
   const { isPending: isSaving, mutate: updateIssue } = useUpdateIssueMutation(
     issueId,
-    useCases.updateIssueUseCase,
+    useCases.updateIssue,
   )
   const navigate = useNavigate()
   const location = useLocation()
@@ -175,11 +179,14 @@ export function IssueDetailsPage({
     updateIssue(
       { ...values, id: issue.id },
       {
-        onError: (err) => {
-          form.setError('root', { message: err.message })
-        },
-        onSuccess: (data) => {
-          form.reset(data)
+        onSuccess: (res) => {
+          if (!res.ok) {
+            form.setError('root', {
+              message: getInfraErrorMessage(res.error),
+            })
+            return
+          }
+          form.reset(res.value)
           toast.success('Issue updated successfully')
           if (location.state?.from === 'board') {
             navigate(generatePath(ROUTES.PROJECT, { projectId }))
@@ -204,7 +211,7 @@ export function IssueDetailsPage({
           <LoadingState />
         ) : error ? (
           <ErrorState error={error} />
-        ) : !canEdit ? (
+        ) : !canEdit || !issue ? (
           <ErrorPermissionState />
         ) : (
           <Form {...form}>
@@ -263,7 +270,7 @@ export function IssueDetailsPage({
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {types?.map((type) => (
+                        {types.map((type) => (
                           <SelectItem
                             key={type.id}
                             value={type.id}>
@@ -294,7 +301,7 @@ export function IssueDetailsPage({
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {statuses?.map((status) => (
+                        {statuses.map((status) => (
                           <SelectItem
                             key={status.id}
                             value={status.id}>
@@ -326,7 +333,7 @@ export function IssueDetailsPage({
                       </FormControl>
                       <SelectContent>
                         <SelectItem value={NONE_VALUE}>Unassigned</SelectItem>
-                        {members?.map((member) => (
+                        {members.map((member) => (
                           <SelectItem
                             key={member.id}
                             value={member.id}>
@@ -358,7 +365,7 @@ export function IssueDetailsPage({
                       </FormControl>
                       <SelectContent>
                         <SelectItem value={NONE_VALUE}>Unassigned</SelectItem>
-                        {members?.map((member) => (
+                        {members.map((member) => (
                           <SelectItem
                             key={member.id}
                             value={member.id}>
@@ -413,7 +420,7 @@ export function IssueDetailsPage({
                 <Button
                   data-testid="btn-reset"
                   disabled={isSaving || !form.formState.isDirty}
-                  onClick={() => form.reset(issue)}
+                  onClick={() => form.reset(issue ?? undefined)}
                   type="button"
                   variant="outline">
                   Reset

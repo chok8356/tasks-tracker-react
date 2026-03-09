@@ -81,11 +81,13 @@ const BoardIssueContent = ({
       <div className="mt-2 flex items-center justify-between gap-2 text-xs">
         <div className="flex items-center gap-1">
           <span className="bg-muted text-muted-foreground flex items-center gap-1 rounded-md px-1.5 py-0.5">
-            {getIssueIcon({
-              className: 'size-3.5',
-              color: type.color,
-              icon: type.icon,
-            })}
+            {type
+              ? getIssueIcon({
+                  className: 'size-3.5',
+                  color: type.color,
+                  icon: type.icon,
+                })
+              : null}
             {issue.id}
           </span>
         </div>
@@ -337,6 +339,7 @@ export const BoardIssues = ({
         )
         if (activeIssueGlobalIndex === -1) return prev
         const [movedIssue] = allIssues.splice(activeIssueGlobalIndex, 1)
+        if (!movedIssue) return prev
 
         const overStatusFilteredIssues = statusesWithIssues.find(
           (col) => col.id === newStatus,
@@ -347,7 +350,10 @@ export const BoardIssues = ({
           overStatusFilteredIssues &&
           index < overStatusFilteredIssues.length
         ) {
-          targetIssueId = overStatusFilteredIssues[index].id
+          const targetIssue = overStatusFilteredIssues[index]
+          if (targetIssue) {
+            targetIssueId = targetIssue.id
+          }
         }
 
         let globalInsertIndex = allIssues.length
@@ -362,7 +368,9 @@ export const BoardIssues = ({
         allIssues.splice(globalInsertIndex, 0, movedIssue)
 
         allIssues.forEach((issue, i) => {
-          newIssues[issue.id] = { ...newIssues[issue.id], order: i }
+          const existingIssue = newIssues[issue.id]
+          if (!existingIssue) return
+          newIssues[issue.id] = { ...existingIssue, order: i }
         })
 
         return newIssues
